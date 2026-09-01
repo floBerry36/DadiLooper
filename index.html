@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>La Règle à Dadi — réplique numérique</title>
+<title>DadiLooper — réplique numérique de la Règle à Dadi</title>
+<meta name="description" content="Réplique numérique de la règle à calcul harmonique inventée par Marcel Dadi et son frère Max Meyer (brevet n°81 21394). Tournez la roue, choisissez une fonction, lisez les fenêtres.">
+<meta property="og:title" content="DadiLooper — réplique numérique de la Règle à Dadi">
+<meta property="og:description" content="Réplique numérique de la règle à calcul harmonique inventée par Marcel Dadi et son frère Max Meyer (brevet n°81 21394). Tournez la roue, choisissez une fonction, lisez les fenêtres.">
+<meta name="robots" content="index,follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -120,28 +124,51 @@
     margin-top:6px;font-weight:600;
   }
   svg.dial{display:block;}
-  .dial-note{cursor:pointer;}
+  .dial-note.outer{cursor:pointer;}
+  .dial-note.inner{cursor:default;}
   .dial-note circle.hit{fill:transparent;}
   .dial-note text{
-    font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;
     fill:var(--ink-soft); text-anchor:middle; dominant-baseline:middle;
     pointer-events:none;
   }
   .dial-note text.dual{font-size:10px;}
   .dial-note text.dual tspan.alt{font-size:9px;fill:var(--ink-soft);opacity:0.7;}
-  .dial-note.selected text.dual tspan.alt{fill:#fff;opacity:0.85;}
-  .dial-note.selected text{fill:#fff;}
   .dial-note-bg{fill:var(--panel-dark);stroke:rgba(42,35,24,0.25);stroke-width:1;transition:fill .15s ease;}
-  .dial-note.selected .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
-  .dial-note:hover .dial-note-bg{fill:var(--brass-light);}
+  /* cercle intérieur : relatifs mineurs, fond plus discret par défaut */
+  .dial-note.inner .dial-note-bg{fill:rgba(42,35,24,0.05);stroke:rgba(42,35,24,0.16);}
+  .dial-note.inner text{font-size:9.5px;font-weight:600;}
+  .dial-note.outer:hover .dial-note-bg{fill:var(--brass-light);}
+
+  /* rôle harmonique — mêmes couleurs sur les deux cercles, seulement à ≤ 2 crans
+     de la fondamentale : fondamentale = rouge · tierce = bleu · quinte = jaune */
+  .dial-note.role-root  .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
+  .dial-note.role-third .dial-note-bg{fill:#33607e;stroke:#33607e;}
+  .dial-note.role-fifth .dial-note-bg{fill:#c99a3a;stroke:#c99a3a;}
+  .dial-note.role-root text, .dial-note.role-third text{fill:#fdf1ee;}
+  .dial-note.role-root text.dual tspan.alt, .dial-note.role-third text.dual tspan.alt{fill:#fdf1ee;opacity:0.85;}
+  .dial-note.role-fifth text{fill:var(--ink);}
+
+  /* fondamentale choisie : liseré sombre par-dessus la couleur de rôle */
+  .dial-note.selected .dial-note-bg{stroke:var(--ink);stroke-width:2.5;}
+
+  .dial-legend{
+    display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
+    margin-top:6px;font-size:9.5px;color:var(--ink-soft);letter-spacing:0.02em;
+  }
+  .dial-legend span{display:inline-flex;align-items:center;gap:4px;}
+  .dial-legend span::before{content:"";width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .dial-legend .d-root::before{background:var(--oxblood);}
+  .dial-legend .d-third::before{background:#33607e;}
+  .dial-legend .d-fifth::before{background:#c99a3a;}
   .dial-center{fill:var(--panel);stroke:rgba(42,35,24,0.3);stroke-width:1.5;}
   .dial-center-text{
-    font-family:'Fraunces',serif;font-weight:700;font-size:22px;fill:var(--ink);
+    font-family:'Fraunces',serif;font-weight:700;font-size:19px;fill:var(--ink);
     text-anchor:middle;
   }
   .dial-center-sub{
-    font-family:'JetBrains Mono',monospace;font-size:10px;fill:var(--ink-soft);
-    text-anchor:middle;letter-spacing:0.06em;
+    font-family:'JetBrains Mono',monospace;font-size:9px;fill:var(--ink-soft);
+    text-anchor:middle;letter-spacing:0.04em;
   }
   .dial-needle{stroke:var(--oxblood);stroke-width:3;stroke-linecap:round;transition:transform .35s cubic-bezier(.4,1.4,.4,1);transform-origin:150px 150px;}
 
@@ -259,6 +286,7 @@
   .looper .hint b{color:var(--oxblood);}
   .looper .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
   .looper .row.lp-center{justify-content:center;}
+  .looper [hidden]{display:none !important;}
   .lp-mic{
     width:74px;height:74px;padding:0;border-radius:50%;
     background:var(--oxblood);border:none;color:#fbeee9;cursor:pointer;
@@ -273,12 +301,27 @@
     padding:7px 12px;cursor:pointer;border:1px solid transparent;transition:filter .15s,transform .05s;
   }
   .lp-btn:active{transform:translateY(1px);}
-  .lp-rec{background:var(--oxblood);color:#fbeee9;border-color:var(--oxblood);}
+  .lp-rec{
+    width:74px;height:74px;padding:0;border-radius:50%;
+    background:var(--oxblood);border:none;color:#fbeee9;cursor:pointer;
+    font-size:0;line-height:0;display:flex;align-items:center;justify-content:center;
+    margin:6px auto 4px;box-shadow:0 6px 16px -6px rgba(143,50,41,0.75);
+    transition:filter .15s ease,transform .05s ease;
+  }
+  .lp-rec:hover{filter:brightness(1.12);}
+  .lp-rec:active{transform:translateY(1px);}
   .lp-rec.recording{animation:lppulse 1s ease-in-out infinite;}
-  @keyframes lppulse{50%{filter:brightness(1.4);}}
+  .lp-rec.countin{animation:lppulse .5s ease-in-out infinite;}
+  @keyframes lppulse{50%{filter:brightness(1.45);transform:scale(1.05);}}
   .lp-ghost{background:var(--panel-dark);color:var(--ink);border-color:rgba(42,35,24,0.25);}
   .lp-ghost:hover{border-color:var(--oxblood);}
-  .lp-status{font-size:11px;color:var(--ink-soft);}
+  .lp-status{font-size:11px;color:var(--ink-soft);text-align:center;width:100%;min-height:14px;}
+  .lp-metro{display:flex;gap:9px;justify-content:center;margin:4px 0 2px;min-height:13px;}
+  .lp-metro span{
+    width:11px;height:11px;border-radius:50%;background:rgba(42,35,24,0.18);
+    transition:background .08s ease,transform .08s ease;
+  }
+  .lp-metro span.on{background:var(--oxblood);transform:scale(1.25);}
   .lp-progress{margin-top:12px;height:7px;border-radius:999px;background:rgba(42,35,24,0.12);overflow:hidden;}
   .lp-playhead{height:100%;width:0;background:var(--teal);}
   .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:5px;}
@@ -296,6 +339,46 @@
   .lp-layer button.on{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
   .lp-slider{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-soft);margin-top:11px;}
   .lp-slider input{flex:1;}
+  .lp-fx{margin-top:12px;border-top:1px solid rgba(42,35,24,0.16);padding-top:10px;}
+  .lp-fx-head{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);
+    background:transparent;border:none;cursor:pointer;padding:0;
+  }
+  .lp-fx-body{display:flex;flex-direction:column;gap:7px;margin-top:9px;}
+  .fx-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+  .fx-on{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);
+    border-radius:6px;padding:3px 9px;cursor:pointer;min-width:58px;
+  }
+  .fx-on.active{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
+  .fx-row label{
+    display:flex;align-items:center;gap:4px;font-size:8.5px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.04em;
+  }
+  .fx-row input[type=range]{width:62px;}
+  .fx-sel{
+    font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--panel-dark);
+    border:1px solid rgba(42,35,24,0.25);color:var(--ink);border-radius:5px;padding:2px 4px;
+  }
+  .fx-row.off label,.fx-row.off .fx-sel{opacity:0.4;}
+  .fx-note{font-size:8.5px;color:var(--ink-soft);margin:2px 0 0;font-style:italic;}
+  .lp-lib{margin-top:13px;border-top:1px solid rgba(42,35,24,0.16);padding-top:11px;}
+  .lp-lib-head{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);margin-bottom:7px;}
+  .lp-lib-note{font-weight:400;color:var(--ink-soft);}
+  .lp-lib-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  .lp-lib-list li{
+    display:flex;align-items:center;gap:8px;font-size:11.5px;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);border-radius:7px;padding:5px 8px;
+  }
+  .lp-lib-list .nm{flex:1;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lp-lib-list .meta{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;font-size:9.5px;}
+  .lp-lib-list button{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;background:transparent;
+    border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer;
+  }
+  .lp-lib-list button.load{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
+  .lp-lib-empty{font-size:10.5px;color:var(--ink-soft);}
 
   footer{margin-top:34px;font-size:11.5px;color:#7c8b87;line-height:1.7;max-width:640px;}
   footer a{color:var(--brass-light);}
@@ -310,9 +393,8 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow"><span class="dot"></span>HOMMAGE — INSTRUMENT PÉDAGOGIQUE, 1981</div>
-    <h1>La Règle à <em>Dadi</em></h1>
-    <p class="subtitle">Réplique numérique de la règle à calcul harmonique inventée par Marcel Dadi et son frère Max Meyer (brevet n°81 21394). Tournez la molette, choisissez une fonction, lisez les fenêtres.</p>
+    <div class="eyebrow"><span class="dot"></span>DadiLooper, l'instrument pédagogique inspiré par Dadi</div>
+    <h1>Dadi<em>Looper</em></h1>
   </header>
 
   <div class="tabbar">
@@ -334,12 +416,17 @@
   </div>
 
   <div class="rule-body">
-    <div class="rule-label" id="ruleLabel">RÈGLE À DADI — FACE 1</div>
+    <div class="rule-label" id="ruleLabel">DADILOOPER — FACE 1</div>
 
     <div class="dial-row">
       <div class="dial-holder">
         <svg class="dial" viewBox="0 0 300 300" width="260" height="260" id="dialSvg"></svg>
-        <div class="dial-caption">Fondamentale</div>
+        <div class="dial-caption">Cycle des quintes · majeures / relatifs mineurs</div>
+        <div class="dial-legend">
+          <span class="d-root">Fondamentale</span>
+          <span class="d-third">Tierce</span>
+          <span class="d-fifth">Quinte</span>
+        </div>
       </div>
 
       <div class="window-panel">
@@ -355,12 +442,21 @@
             <button class="lp-mic" id="lpMicBtn" type="button" aria-label="Activer le micro">🎤</button>
           </div>
           <div id="lpMain" hidden>
-            <div class="row">
-              <button class="lp-btn lp-rec" id="lpRecBtn" type="button">● Enregistrer la boucle</button>
+            <div class="row lp-center">
+              <button class="lp-rec" id="lpRecBtn" type="button" aria-label="Lancer l’enregistrement"></button>
+            </div>
+            <div class="lp-metro" id="lpMetro" hidden><span></span><span></span><span></span><span></span></div>
+            <div class="row lp-center">
+              <span class="lp-status" id="lpStatus"></span>
+            </div>
+            <div class="row lp-center">
               <button class="lp-btn lp-ghost" id="lpPlayBtn" type="button" hidden>Pause</button>
               <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" hidden>Annuler la dernière</button>
               <button class="lp-btn lp-ghost" id="lpClearBtn" type="button" hidden>Tout effacer</button>
-              <span class="lp-status" id="lpStatus"></span>
+            </div>
+            <div class="row lp-center" id="lpSaveRow" hidden>
+              <button class="lp-btn lp-ghost" id="lpSaveBtn" type="button">💾 Sauvegarder</button>
+              <button class="lp-btn lp-ghost" id="lpExportBtn" type="button">⬇ Export .wav</button>
             </div>
             <div class="lp-progress" id="lpProgWrap" hidden><div class="lp-playhead" id="lpPlayhead"></div></div>
             <div class="lp-layers" id="lpLayers"></div>
@@ -369,6 +465,43 @@
               <input type="range" id="lpCal" min="0" max="300" step="5" value="150">
               <span id="lpCalVal">150&nbsp;ms</span>
             </label>
+            <div class="lp-fx" id="lpFx" hidden>
+              <button class="lp-fx-head" id="lpFxToggle" type="button" aria-expanded="false">Effets ▸</button>
+              <div class="lp-fx-body" id="lpFxBody" hidden>
+                <div class="fx-row off">
+                  <button class="fx-on" type="button" data-fx="filter">Filtre</button>
+                  <select class="fx-sel" data-fxp="filter.type" aria-label="Type de filtre">
+                    <option value="lowpass">passe-bas</option>
+                    <option value="highpass">passe-haut</option>
+                  </select>
+                  <label>fréq<input type="range" data-fxp="filter.freq" min="80" max="12000" step="20" value="1200"></label>
+                </div>
+                <div class="fx-row off">
+                  <button class="fx-on" type="button" data-fx="drive">Drive</button>
+                  <label>taux<input type="range" data-fxp="drive.amount" min="0" max="1" step="0.01" value="0.35"></label>
+                </div>
+                <div class="fx-row off">
+                  <button class="fx-on" type="button" data-fx="fuzz">Fuzz</button>
+                  <label>taux<input type="range" data-fxp="fuzz.amount" min="0" max="1" step="0.01" value="0.6"></label>
+                </div>
+                <div class="fx-row off">
+                  <button class="fx-on" type="button" data-fx="echo">Écho</button>
+                  <label>temps<input type="range" data-fxp="echo.time" min="0.05" max="1.2" step="0.01" value="0.28"></label>
+                  <label>répét.<input type="range" data-fxp="echo.feedback" min="0" max="0.85" step="0.01" value="0.35"></label>
+                  <label>mix<input type="range" data-fxp="echo.mix" min="0" max="1" step="0.01" value="0.35"></label>
+                </div>
+                <div class="fx-row off">
+                  <button class="fx-on" type="button" data-fx="reverb">Réverb</button>
+                  <label>taille<input type="range" data-fxp="reverb.size" min="0.3" max="5" step="0.1" value="2.2"></label>
+                  <label>mix<input type="range" data-fxp="reverb.mix" min="0" max="1" step="0.01" value="0.3"></label>
+                </div>
+                <p class="fx-note">Les effets sont inclus dans les sauvegardes et l’export.</p>
+              </div>
+            </div>
+          </div>
+          <div class="lp-lib" id="lpLibWrap" hidden>
+            <div class="lp-lib-head">Boucles sauvegardées <span class="lp-lib-note">(sur cet appareil)</span></div>
+            <ul class="lp-lib-list" id="lpLib"></ul>
           </div>
         </div>
       </div>
@@ -542,45 +675,85 @@ function relMinorName(rootIdx){
 }
 
 /* ---------------- DIAL ---------------- */
+// La roue suit le CYCLE DES QUINTES (et non l'ordre chromatique) : chaque pas
+// horaire monte d'une quinte juste (pc = position*7 mod 12). Deux cercles
+// concentriques, comme sur la règle papier :
+//   • cercle EXTÉRIEUR = tonalités majeures ;
+//   • cercle INTÉRIEUR = leur relatif mineur, aligné radialement (La m sous Do).
+// Seules la fondamentale (rouge), la tierce (bleu) et la quinte (jaune) sont
+// colorées, et uniquement dans un rayon de 2 positions autour de la fondamentale
+// — au-delà on n'éclaire rien, pour garder une lecture nette.
+const FIFTHS_POS_TO_PC = Array.from({length:12}, (_,p)=> (p*7)%12);
+const pcToDialPos = pc => (((pc%12)+12)%12 * 7) % 12;   // 7 est son propre inverse mod 12
+const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
+
 function drawDial(){
   const svg = document.getElementById('dialSvg');
-  const cx=150, cy=150, r=118, hitR=26;
-  let html = `<circle cx="${cx}" cy="${cy}" r="${r+30}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>`;
-  for(let i=0;i<12;i++){
-    const angle = (i*30 - 90) * Math.PI/180;
-    const x = cx + r*Math.cos(angle);
-    const y = cy + r*Math.sin(angle);
-    const sel = state.root===i ? 'selected':'';
-    // Sur un cadran chromatique une note altérée a deux orthographes valides :
-    // on les affiche toutes les deux (dièse au-dessus, bémol en dessous) pour
-    // que la molette reste lisible quelle que soit la convention cherchée.
-    const label = NOTE_SHARP[i]===NOTE_FLAT[i]
-      ? `<text>${NOTE_SHARP[i]}</text>`
-      : `<text class="dual"><tspan x="0" dy="-3">${NOTE_SHARP[i]}</tspan><tspan class="alt" x="0" dy="13">${NOTE_FLAT[i]}</tspan></text>`;
-    html += `<g class="dial-note ${sel}" data-note="${i}" transform="translate(${x},${y})">
-      <circle class="dial-note-bg" r="22"></circle>
-      <circle class="hit" r="24"></circle>
-      ${label}
-    </g>`;
+  const cx=150, cy=150;
+  const set = currentSet();
+  const has = pc => set.includes(((pc%12)+12)%12);
+
+  // Rôle harmonique par rapport à la fondamentale : fondamentale, tierce (3–4
+  // demi-tons), quinte (6–8 demi-tons). Le reste n'est pas coloré.
+  const roleOf = pc => {
+    pc = ((pc%12)+12)%12;
+    if(pc === state.root) return 'role-root';
+    if(!has(pc)) return '';
+    const iv = ((pc - state.root)%12 + 12) % 12;
+    if(iv === 3 || iv === 4) return 'role-third';
+    if(iv === 6 || iv === 7 || iv === 8) return 'role-fifth';
+    return '';
+  };
+  // Position de la fondamentale sur la roue, et distance angulaire (en crans).
+  const rootPos = pcToDialPos(state.root);
+  const posDist = p => { const d = ((p - rootPos)%12 + 12) % 12; return Math.min(d, 12 - d); };
+  const roleAt = (p, pc) => posDist(p) <= 2 ? roleOf(pc) : '';
+
+  let deco = `<circle cx="${cx}" cy="${cy}" r="${DIAL.rOut+18}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>
+    <circle cx="${cx}" cy="${cy}" r="${(DIAL.rOut+DIAL.rIn)/2}" fill="none" stroke="rgba(42,35,24,0.10)" stroke-width="1"/>`;
+  let ring = '';
+
+  for(let p=0;p<12;p++){
+    const pcMaj = FIFTHS_POS_TO_PC[p];
+    const pcMin = (pcMaj + 9) % 12;                 // relatif mineur = 3 demi-tons sous la tonique
+    const ang = (p*30 - 90) * Math.PI/180;
+    const co = Math.cos(ang), si = Math.sin(ang);
+
+    // --- cercle extérieur : majeures ---
+    const ox = cx + DIAL.rOut*co, oy = cy + DIAL.rOut*si;
+    const ocls = ['dial-note','outer'];
+    if(state.root===pcMaj) ocls.push('selected');
+    { const rr = roleAt(p, pcMaj); if(rr) ocls.push(rr); }
+    const olabel = NOTE_SHARP[pcMaj]===NOTE_FLAT[pcMaj]
+      ? `<text>${NOTE_SHARP[pcMaj]}</text>`
+      : `<text class="dual"><tspan x="0" dy="-3">${NOTE_SHARP[pcMaj]}</tspan><tspan class="alt" x="0" dy="12">${NOTE_FLAT[pcMaj]}</tspan></text>`;
+    ring += `<g class="${ocls.join(' ')}" data-note="${pcMaj}" transform="translate(${ox},${oy})">
+      <circle class="dial-note-bg" r="${DIAL.cOut}"></circle>
+      <circle class="hit" r="${DIAL.cOut+3}"></circle>${olabel}</g>`;
+
+    // --- cercle intérieur : relatifs mineurs (référence, non cliquable) ---
+    const ix = cx + DIAL.rIn*co, iy = cy + DIAL.rIn*si;
+    const icls = ['dial-note','inner'];
+    { const rr = roleAt(p, pcMin); if(rr) icls.push(rr); }
+    ring += `<g class="${icls.join(' ')}" transform="translate(${ix},${iy})">
+      <circle class="dial-note-bg" r="${DIAL.cIn}"></circle>
+      <text>${relMinorName(pcMaj)}m</text></g>`;
   }
-  const angle0 = (state.root*30 - 90) * Math.PI/180;
-  const nx = cx + (r-34)*Math.cos(angle0);
-  const ny = cy + (r-34)*Math.sin(angle0);
-  html = `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"></line>` + html;
 
-  const centerLabel = state.face==='chords'
-    ? noteName(state.root) + (CHORD_TYPES.find(c=>c.id===state.chordType).symbol)
-    : noteName(state.root);
-  const centerSub = state.face==='chords'
-    ? CHORD_TYPES.find(c=>c.id===state.chordType).label
-    : SCALES.find(s=>s.id===state.scaleType).label;
+  const angle0 = (pcToDialPos(state.root)*30 - 90) * Math.PI/180;
+  const nr = DIAL.rOut - DIAL.cOut - 4;
+  const needle = `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${cx + nr*Math.cos(angle0)}" y2="${cy + nr*Math.sin(angle0)}"></line>`;
 
-  html += `<circle class="dial-center" cx="${cx}" cy="${cy}" r="52"></circle>
+  const ct = CHORD_TYPES.find(c=>c.id===state.chordType);
+  const centerLabel = state.face==='chords' ? noteName(state.root) + ct.symbol : noteName(state.root);
+  const centerSub = state.face==='chords' ? ct.label : SCALES.find(s=>s.id===state.scaleType).label;
+
+  const center = `<circle class="dial-center" cx="${cx}" cy="${cy}" r="${DIAL.rCenter}"></circle>
     <text class="dial-center-text" x="${cx}" y="${cy-2}">${centerLabel}</text>
-    <text class="dial-center-sub" x="${cx}" y="${cy+16}">${centerSub}</text>`;
+    <text class="dial-center-sub" x="${cx}" y="${cy+15}">${centerSub}</text>`;
 
-  svg.innerHTML = html;
-  svg.querySelectorAll('.dial-note').forEach(el=>{
+  svg.innerHTML = deco + needle + ring + center;
+  svg.querySelectorAll('.dial-note.outer').forEach(el=>{
     el.addEventListener('click', ()=>{
       state.root = parseInt(el.dataset.note,10);
       audio.blip(state.root);
@@ -689,7 +862,7 @@ function drawWindows(){
       state.root=parseInt(el.dataset.root,10);
       state.chordType=el.dataset.q;
       document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.face==='chords'));
-      document.getElementById('ruleLabel').textContent='RÈGLE À DADI — FACE 1';
+      document.getElementById('ruleLabel').textContent='DADILOOPER — FACE 1';
       render();
       audio.play(currentVoicing(), state.playMode);
     });
@@ -923,16 +1096,111 @@ function mergeChunks(chunks, maxSamples){
   return out;
 }
 
+/* ---------------- LOOPER FX ---------------- */
+// Rack master inséré entre le bus des boucles et la sortie. Graphe STATIQUE :
+// tous les nœuds sont toujours branchés, activer/couper un effet ne fait que
+// régler des gains ou des courbes (jamais de reconnexion → pas de clic). Le même
+// graphe est reconstruit dans le rendu hors-ligne pour « cuire » les effets dans
+// les sauvegardes et l'export.
+function fxDefaults(){
+  return {
+    filter:{ on:false, type:'lowpass', freq:1200 },
+    drive: { on:false, amount:0.35 },
+    fuzz:  { on:false, amount:0.6 },
+    echo:  { on:false, time:0.28, feedback:0.35, mix:0.35 },
+    reverb:{ on:false, size:2.2, mix:0.3 },
+  };
+}
+function fxAnyOn(fx){ return !!fx && Object.keys(fx).some(k => fx[k].on); }
+function fxLinearCurve(){
+  const n = 2048, c = new Float32Array(n);
+  for(let i=0;i<n;i++) c[i] = (i*2)/n - 1;
+  return c;
+}
+function fxDriveCurve(k){                      // saturation douce
+  const n = 2048, c = new Float32Array(n), a = k * 12;
+  for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = (1 + a) * x / (1 + a * Math.abs(x)); }
+  return c;
+}
+function fxFuzzCurve(k){                        // écrêtage dur
+  const n = 2048, c = new Float32Array(n), g = 1 + k * 60, lim = 0.75;
+  for(let i=0;i<n;i++){ const x = (i*2)/n - 1; c[i] = Math.max(-lim, Math.min(lim, Math.tanh(x * g))); }
+  return c;
+}
+function fxMakeIR(ctx, seconds){               // réverb : impulsion synthétique
+  const rate = ctx.sampleRate, len = Math.max(1, Math.floor(rate * seconds));
+  const ir = ctx.createBuffer(2, len, rate);
+  for(let ch=0; ch<2; ch++){
+    const d = ir.getChannelData(ch);
+    for(let i=0;i<len;i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 2.6);
+  }
+  return ir;
+}
+function fxApply(ctx, n, fx){
+  if(fx.filter.on){ n.filter.type = fx.filter.type; n.filter.frequency.value = fx.filter.freq; }
+  else { n.filter.type = 'lowpass'; n.filter.frequency.value = 22000; }
+  n.drive.curve = fx.drive.on ? fxDriveCurve(fx.drive.amount) : fxLinearCurve();
+  n.fuzz.curve  = fx.fuzz.on  ? fxFuzzCurve(fx.fuzz.amount)   : fxLinearCurve();
+  n.postDist.gain.value = fx.fuzz.on ? 0.7 : 1;
+  n.delay.delayTime.value = fx.echo.time;
+  n.fb.gain.value      = fx.echo.on ? Math.min(0.85, fx.echo.feedback) : 0;
+  n.echoWet.gain.value = fx.echo.on ? fx.echo.mix : 0;
+  if(!n.conv.buffer || n._irSize !== fx.reverb.size){
+    n.conv.buffer = fxMakeIR(ctx, fx.reverb.size); n._irSize = fx.reverb.size;
+  }
+  n.revWet.gain.value = fx.reverb.on ? fx.reverb.mix : 0;
+}
+function fxBuild(ctx, fx){
+  const n = {
+    input: ctx.createGain(), output: ctx.createGain(),
+    filter: ctx.createBiquadFilter(),
+    drive: ctx.createWaveShaper(), fuzz: ctx.createWaveShaper(),
+    postDist: ctx.createGain(),
+    dry: ctx.createGain(),
+    delay: ctx.createDelay(2.0), fb: ctx.createGain(), echoWet: ctx.createGain(),
+    conv: ctx.createConvolver(), revWet: ctx.createGain(),
+    _irSize: null,
+  };
+  n.filter.Q.value = 0.9;
+  n.drive.oversample = '2x'; n.fuzz.oversample = '4x';
+  n.input.connect(n.filter);
+  n.filter.connect(n.drive);
+  n.drive.connect(n.fuzz);
+  n.fuzz.connect(n.postDist);
+  n.postDist.connect(n.dry);   n.dry.connect(n.output);
+  n.postDist.connect(n.delay); n.delay.connect(n.fb); n.fb.connect(n.delay);
+  n.delay.connect(n.echoWet);  n.echoWet.connect(n.output);
+  n.postDist.connect(n.conv);  n.conv.connect(n.revWet); n.revWet.connect(n.output);
+  fxApply(ctx, n, fx);
+  return n;
+}
+
 const looper = {
   stream:null, src:null, proc:null, sink:null, bus:null,
+  fx:null, _fxNodes:null,
   layers:[], loopSamples:0, loopLen:0, loop0:0,
-  mode:'idle',                 // idle | recFirst | playing | recOver | assembling
+  mode:'idle',                 // idle | countin | recFirst | playing | recOver | assembling
   chunks:[], recCount:0, recPhase:0, targetSamples:0,
   latencyComp:0.15,
+  _countTimer:null, _countKind:'first',
+
+  _ensureAudioOut(){
+    audio.init(); audio.resume();
+    if(!audio.ctx) return false;
+    if(!this.bus){
+      this.bus = audio.ctx.createGain();
+      this.bus.gain.value = 1;
+      if(!this.fx) this.fx = fxDefaults();
+      this._fxNodes = fxBuild(audio.ctx, this.fx);
+      this.bus.connect(this._fxNodes.input);
+      this._fxNodes.output.connect(audio.ctx.destination);
+    }
+    if(!this._rafOn){ this._rafOn = true; this._raf(); }
+    return true;
+  },
 
   async enableMic(){
-    audio.init(); audio.resume();
-    if(!audio.ctx){ this._hint('WebAudio indisponible sur ce navigateur.'); return; }
+    if(!this._ensureAudioOut()){ this._hint('WebAudio indisponible sur ce navigateur.'); return; }
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       this._hint('Accès micro impossible : la page doit être servie en HTTPS (ou http://localhost).');
       return;
@@ -950,16 +1218,14 @@ const looper = {
     this.proc = ctx.createScriptProcessor(4096, 1, 1);
     this.proc.onaudioprocess = e => this._capture(e);
     this.sink = ctx.createGain(); this.sink.gain.value = 0;   // aucun retour casque
-    this.bus  = ctx.createGain(); this.bus.gain.value = 1;    // sortie des boucles
-    this.bus.connect(ctx.destination);
     this.src.connect(this.proc);
     this.proc.connect(this.sink); this.sink.connect(ctx.destination);
     document.getElementById('lpMicBtn').hidden = true;
     document.getElementById('lpMain').hidden = false;
     document.getElementById('lpCalWrap').hidden = false;
-    this._hint('Micro actif. « Enregistrer la boucle » pose la première couche : sa durée fixe la longueur de boucle.');
+    this._revealFx();
+    this._hint('Micro actif. Appuie sur le bouton rouge&nbsp;: un décompte de 4 temps (bips) démarre, puis l’enregistrement commence — sa durée fixe la longueur de boucle. Ré-appuie pour arrêter.');
     this._syncBtns();
-    this._raf();
   },
 
   _capture(e){
@@ -982,24 +1248,89 @@ const looper = {
 
   recordBtn(){
     if(this.mode === 'idle'){
-      this.chunks = []; this.recCount = 0; this.mode = 'recFirst';
-      this._status('Enregistrement de la boucle…');
-      this._syncBtns();
+      if(!this.proc){ this._hint('Active d’abord le micro (bouton 🎤).'); return; }
+      this._startCountIn('first');
+    } else if(this.mode === 'playing'){
+      if(!this.proc){ this._hint('Active d’abord le micro (bouton 🎤).'); return; }
+      this._startCountIn('over');
+    } else if(this.mode === 'countin'){
+      this._cancelCountIn();
     } else if(this.mode === 'recFirst'){
       this._finishFirst();
-    } else if(this.mode === 'playing'){
+    } else if(this.mode === 'recOver'){
+      this.targetSamples = this.recCount;    // arrêt anticipé → complété par du silence
+      this.mode = 'assembling';
+      this._finishOver();
+    }
+  },
+
+  // Bip de métronome — envoyé direct à la sortie, hors chaîne de capture (non enregistré).
+  _beep(accent){
+    const ctx = audio.ctx; if(!ctx) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = accent ? 1320 : 880;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.36 : 0.22, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.start(t); o.stop(t + 0.16);
+  },
+
+  // Décompte de 4 temps (un bip par seconde) avant de lancer la capture,
+  // le temps de se caler sur son instrument. L'enregistrement démarre sur le 5e temps.
+  _startCountIn(kind){
+    this._countKind = kind;
+    this.mode = 'countin';
+    const metro = document.getElementById('lpMetro');
+    const dots = metro.querySelectorAll('span');
+    dots.forEach(d=> d.classList.remove('on'));
+    metro.hidden = false;
+    this._syncBtns();
+    let beat = 0;
+    const tick = ()=>{
+      beat++;
+      if(beat <= 4){
+        dots[beat-1].classList.add('on');
+        this._beep(beat === 1);
+        this._status('Départ… ' + beat + ' / 4');
+        this._countTimer = setTimeout(tick, 1000);
+      } else {
+        this._countTimer = null;
+        metro.hidden = true;
+        dots.forEach(d=> d.classList.remove('on'));
+        this._beginRecording();
+      }
+    };
+    tick();
+  },
+
+  _cancelCountIn(){
+    if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
+    const metro = document.getElementById('lpMetro');
+    metro.hidden = true;
+    metro.querySelectorAll('span').forEach(d=> d.classList.remove('on'));
+    this.mode = this._countKind === 'over' ? 'playing' : 'idle';
+    this._status(this._countKind === 'over' ? 'Décompte annulé.' : '');
+    this._syncBtns();
+  },
+
+  _beginRecording(){
+    if(this._countKind === 'over'){
       const now = audio.ctx.currentTime;
       this.recPhase = ((now - this.loop0) % this.loopLen + this.loopLen) % this.loopLen;
       this.chunks = []; this.recCount = 0;
       this.targetSamples = this.loopSamples;
       this.mode = 'recOver';
       this._status('Overdub en cours…');
-      this._syncBtns();
-    } else if(this.mode === 'recOver'){
-      this.targetSamples = this.recCount;    // arrêt anticipé → complété par du silence
-      this.mode = 'assembling';
-      this._finishOver();
+    } else {
+      this.chunks = []; this.recCount = 0;
+      this.mode = 'recFirst';
+      this._status('Enregistrement… (ré-appuie pour fixer la longueur)');
     }
+    this._syncBtns();
   },
 
   _finishFirst(){
@@ -1046,7 +1377,7 @@ const looper = {
     const g = ctx.createGain(); g.gain.value = 1;
     node.connect(g); g.connect(this.bus);
     node.start(when, offset || 0);
-    this.layers.push({ node, gain:g, muted:false });
+    this.layers.push({ node, gain:g, muted:false, data:float32, offset:offset || 0 });
     this._renderLayers();
   },
 
@@ -1063,6 +1394,8 @@ const looper = {
     else { this._renderLayers(); this._syncBtns(); }
   },
   clearAll(){
+    if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
+    document.getElementById('lpMetro').hidden = true;
     this.layers.forEach(L=>{ try{ L.node.stop(); }catch(e){} });
     this.layers = []; this.loopLen = 0; this.loopSamples = 0; this.mode = 'idle';
     if(this.bus) this.bus.gain.setTargetAtTime(1, audio.ctx.currentTime, 0.01);
@@ -1105,18 +1438,252 @@ const looper = {
     const play = document.getElementById('lpPlayBtn');
     const undo = document.getElementById('lpUndoBtn');
     const clr  = document.getElementById('lpClearBtn');
-    const r0 = this.mode === 'recFirst' || this.mode === 'recOver' || this.mode === 'assembling';
-    rec.classList.toggle('recording', r0);
-    rec.textContent =
-      this.mode === 'idle'      ? '● Enregistrer la boucle' :
-      this.mode === 'recFirst'  ? '■ Terminer la boucle' :
-      this.mode === 'playing'   ? '● Ajouter une couche' :
-                                  '■ Arrêter l’overdub';
+    const rON  = this.mode === 'recFirst' || this.mode === 'recOver' || this.mode === 'assembling';
+    const busy = rON || this.mode === 'countin';
+    rec.classList.toggle('recording', rON);
+    rec.classList.toggle('countin', this.mode === 'countin');
+    rec.setAttribute('aria-label',
+      this.mode === 'recFirst' ? 'Terminer la boucle' :
+      this.mode === 'recOver'  ? 'Arrêter l’overdub' :
+      this.mode === 'countin'  ? 'Annuler le décompte' :
+      this.mode === 'playing'  ? 'Enregistrer une couche' :
+                                 'Lancer l’enregistrement');
     const has = this.layers.length > 0;
     play.hidden = undo.hidden = clr.hidden = !has;
+    document.getElementById('lpSaveRow').hidden = !has || busy;
   },
   _status(t){ document.getElementById('lpStatus').textContent = t; },
   _hint(t){ document.getElementById('lpHint').innerHTML = t; },
+
+  /* --- Rack d'effets (UI) --- */
+  _revealFx(){
+    document.getElementById('lpFx').hidden = false;
+    this._renderFxUI();
+  },
+  _renderFxUI(){
+    if(!this.fx) this.fx = fxDefaults();
+    document.querySelectorAll('#lpFx .fx-on').forEach(b=>{
+      const on = this.fx[b.dataset.fx].on;
+      b.classList.toggle('active', on);
+      const row = b.closest('.fx-row');
+      if(row) row.classList.toggle('off', !on);
+    });
+  },
+  _toggleFx(cat){
+    if(!this.fx) this.fx = fxDefaults();
+    if(!this.fx[cat]) return;
+    this.fx[cat].on = !this.fx[cat].on;
+    if(this._fxNodes) fxApply(audio.ctx, this._fxNodes, this.fx);
+    this._renderFxUI();
+  },
+  _setFx(path, value){
+    if(!this.fx) this.fx = fxDefaults();
+    const [cat, key] = path.split('.');
+    if(!this.fx[cat] || !(key in this.fx[cat])) return;
+    this.fx[cat][key] = value;
+    if(this._fxNodes) fxApply(audio.ctx, this._fxNodes, this.fx);
+  },
+
+  /* --- Bounce : mixage hors-ligne des couches non muettes, effets « cuits » --- */
+  async _bounce(){
+    if(!this.layers.length) return null;
+    const sr   = audio.ctx.sampleRate;
+    const len  = this.loopSamples;
+    const useFx = fxAnyOn(this.fx);
+    // Avec effets : on rend 2 tours et on garde le second, pour que les queues
+    // d'écho / réverb du tour précédent « bouclent » naturellement.
+    const renderLen = useFx ? len * 2 : len;
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const off = new OAC(1, renderLen, sr);
+
+    let sink = off.destination;
+    if(useFx){
+      const g = fxBuild(off, this.fx);
+      g.output.connect(off.destination);
+      sink = g.input;
+    }
+
+    let any = false;
+    for(const L of this.layers){
+      if(L.muted) continue;
+      any = true;
+      const ab = off.createBuffer(1, L.data.length, sr);
+      (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
+      const n = off.createBufferSource();
+      n.buffer = ab; n.loop = true; n.loopStart = 0; n.loopEnd = this.loopLen;
+      n.connect(sink);
+      n.start(0, L.offset || 0);
+    }
+    if(!any) return null;
+    const rendered = await off.startRendering();
+    const ch = rendered.getChannelData(0);
+    return useFx ? ch.slice(len, len * 2) : ch;   // Float32Array, longueur = loopSamples
+  },
+
+  _encodeWav(f32, sr){
+    const len = f32.length;
+    const buf = new ArrayBuffer(44 + len * 2);
+    const v = new DataView(buf);
+    const w = (o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4, 36 + len*2, true); w(8,'WAVE');
+    w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr*2, true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    w(36,'data'); v.setUint32(40, len*2, true);
+    let o = 44;
+    for(let i=0;i<len;i++){
+      let s = Math.max(-1, Math.min(1, f32[i]));
+      v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      o += 2;
+    }
+    return new Blob([buf], { type:'audio/wav' });
+  },
+
+  async exportWav(){
+    if(!this.layers.length) return;
+    this._status('Préparation du fichier…');
+    const mix = await this._bounce();
+    if(!mix){ this._status('Rien à exporter (toutes les couches sont muettes).'); return; }
+    const blob = this._encodeWav(mix, audio.ctx.sampleRate);
+    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    const file = new File([blob], 'boucle-dadi-' + stamp + '.wav', { type:'audio/wav' });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      try{ await navigator.share({ files:[file], title:'Boucle DadiLooper' }); this._status('Fichier partagé.'); return; }
+      catch(e){ if(e && e.name === 'AbortError'){ this._status(''); return; } }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    this._status('Fichier .wav téléchargé.');
+  },
+
+  /* --- Bibliothèque locale (IndexedDB) --- */
+  _db(){
+    if(this._dbP) return this._dbP;
+    this._dbP = new Promise((res, rej)=>{
+      const r = indexedDB.open('dadiLooper', 1);
+      r.onupgradeneeded = ()=> r.result.createObjectStore('loops', { keyPath:'id' });
+      r.onsuccess = ()=> res(r.result);
+      r.onerror  = ()=> rej(r.error);
+    });
+    return this._dbP;
+  },
+  async _libAll(){
+    const db = await this._db();
+    return new Promise((res, rej)=>{
+      const q = db.transaction('loops','readonly').objectStore('loops').getAll();
+      q.onsuccess = ()=> res((q.result || []).sort((a,b)=> b.id - a.id));
+      q.onerror  = ()=> rej(q.error);
+    });
+  },
+  async _libPut(rec){
+    const db = await this._db();
+    return new Promise((res, rej)=>{
+      const t = db.transaction('loops','readwrite');
+      t.objectStore('loops').put(rec);
+      t.oncomplete = ()=> res();
+      t.onerror   = ()=> rej(t.error);
+    });
+  },
+  async _libDel(id){
+    const db = await this._db();
+    return new Promise((res, rej)=>{
+      const t = db.transaction('loops','readwrite');
+      t.objectStore('loops').delete(id);
+      t.oncomplete = ()=> res();
+      t.onerror   = ()=> rej(t.error);
+    });
+  },
+
+  async saveLoop(){
+    if(!this.layers.length) return;
+    const def = 'Boucle ' + new Date().toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const name = (window.prompt('Nom de la boucle :', def) || '').trim();
+    if(!name) return;
+    this._status('Sauvegarde…');
+    const mix = await this._bounce();
+    if(!mix){ this._status('Rien à sauvegarder.'); return; }
+    try{
+      await this._libPut({
+        id: Date.now(),
+        name,
+        date: new Date().toISOString(),
+        sampleRate: audio.ctx.sampleRate,
+        loopLen: this.loopLen,
+        data: mix
+      });
+      this._status('Boucle « ' + name + ' » sauvegardée.');
+      this._renderLib();
+    }catch(e){
+      this._status('Échec de la sauvegarde : ' + (e && e.name ? e.name : e));
+    }
+  },
+
+  async _loadRec(rec){
+    if(!this._ensureAudioOut()){ this._hint('WebAudio indisponible sur ce navigateur.'); return; }
+    this.layers.forEach(L=>{ try{ L.node.stop(); }catch(e){} });
+    this.layers = [];
+    const sr = audio.ctx.sampleRate;
+    let data = rec.data;
+    if(rec.sampleRate && rec.sampleRate !== sr){
+      // ré-échantillonnage simple si le taux diffère (rare, changement d'appareil)
+      const ratio = sr / rec.sampleRate;
+      const out = new Float32Array(Math.round(data.length * ratio));
+      for(let i=0;i<out.length;i++) out[i] = data[Math.min(data.length-1, Math.floor(i / ratio))];
+      data = out;
+    }
+    this.loopSamples = data.length;
+    this.loopLen = data.length / sr;
+    this.loop0 = audio.ctx.currentTime;
+    this.mode = 'playing';
+    if(this.bus) this.bus.gain.setTargetAtTime(1, audio.ctx.currentTime, 0.01);
+    this._addLayer(data, this.loop0, 0);
+    document.getElementById('lpMain').hidden = false;
+    document.getElementById('lpProgWrap').hidden = false;
+    document.getElementById('lpPlayBtn').textContent = 'Pause';
+    this._revealFx();
+    this._status('Chargé : ' + rec.name + ' (' + this.loopLen.toFixed(2) + ' s)');
+    this._syncBtns();
+  },
+
+  async _renderLib(){
+    const wrap = document.getElementById('lpLibWrap');
+    const host = document.getElementById('lpLib');
+    if(!('indexedDB' in window)){ wrap.hidden = true; return; }
+    let recs = [];
+    try{ recs = await this._libAll(); }catch(e){ wrap.hidden = true; return; }
+    wrap.hidden = false;
+    if(!recs.length){
+      host.innerHTML = '<li class="lp-lib-empty">Aucune boucle sauvegardée pour l’instant.</li>';
+      return;
+    }
+    host.innerHTML = recs.map(r=>{
+      const d = new Date(r.date);
+      const meta = (r.loopLen ? r.loopLen.toFixed(1) + ' s · ' : '') +
+        d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
+      return `<li>
+        <span class="nm">${r.name.replace(/[<>&]/g,'')}</span>
+        <span class="meta">${meta}</span>
+        <button class="load" data-id="${r.id}">Charger</button>
+        <button class="del" data-id="${r.id}">Suppr.</button>
+      </li>`;
+    }).join('');
+    host.querySelectorAll('button.load').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        const all = await this._libAll();
+        const rec = all.find(x=> x.id === Number(b.dataset.id));
+        if(rec) this._loadRec(rec);
+      });
+    });
+    host.querySelectorAll('button.del').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        if(!window.confirm('Supprimer cette boucle ?')) return;
+        await this._libDel(Number(b.dataset.id));
+        this._renderLib();
+      });
+    });
+  },
 };
 
 /* ---------------- RENDER ---------------- */
@@ -1126,7 +1693,7 @@ function render(){
   drawWindows();
   document.getElementById('instCaption').textContent =
     state.face==='chords' ? "POSITIONS SUR L'INSTRUMENT" : "POSITIONS DE LA GAMME";
-  document.getElementById('ruleLabel').textContent = state.face==='chords' ? 'RÈGLE À DADI — FACE 1' : 'RÈGLE À DADI — FACE 2';
+  document.getElementById('ruleLabel').textContent = state.face==='chords' ? 'DADILOOPER — FACE 1' : 'DADILOOPER — FACE 2';
   document.getElementById('tuningSelect').style.display = state.instrument==='guitar' ? 'inline-block':'none';
   if(state.instrument==='guitar') drawFretboard(); else drawPiano();
 }
@@ -1174,10 +1741,33 @@ document.getElementById('lpRecBtn').addEventListener('click', ()=>looper.recordB
 document.getElementById('lpPlayBtn').addEventListener('click', ()=>looper.togglePlay());
 document.getElementById('lpUndoBtn').addEventListener('click', ()=>looper.removeLast());
 document.getElementById('lpClearBtn').addEventListener('click', ()=>looper.clearAll());
+document.getElementById('lpSaveBtn').addEventListener('click', ()=>looper.saveLoop());
+document.getElementById('lpExportBtn').addEventListener('click', ()=>looper.exportWav());
 document.getElementById('lpCal').addEventListener('input', e=>{
   looper.latencyComp = parseInt(e.target.value,10) / 1000;
   document.getElementById('lpCalVal').textContent = e.target.value + ' ms';
 });
+(function(){
+  const lpFx = document.getElementById('lpFx');
+  document.getElementById('lpFxToggle').addEventListener('click', e=>{
+    const body = document.getElementById('lpFxBody');
+    const open = body.hidden;
+    body.hidden = !open;
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+    e.currentTarget.textContent = open ? 'Effets ▾' : 'Effets ▸';
+  });
+  lpFx.addEventListener('click', e=>{
+    const b = e.target.closest('.fx-on');
+    if(b) looper._toggleFx(b.dataset.fx);
+  });
+  const onParam = el=>{
+    if(!el || !el.dataset || !el.dataset.fxp) return;
+    looper._setFx(el.dataset.fxp, el.tagName === 'SELECT' ? el.value : parseFloat(el.value));
+  };
+  lpFx.addEventListener('input',  e=> onParam(e.target));
+  lpFx.addEventListener('change', e=> onParam(e.target));
+})();
+looper._renderLib();
 
 setMutedUI();
 render();

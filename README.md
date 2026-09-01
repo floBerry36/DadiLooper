@@ -1,9 +1,11 @@
-# La Règle à Dadi — réplique numérique
+# DadiLooper
 
-Réplique interactive, en un seul fichier HTML, de la règle à calcul harmonique
-de Marcel Dadi et Max Meyer : molette de fondamentale, natures d'accords,
-gammes et modes, positions sur guitare (plusieurs accordages) et clavier,
-lecture des intervalles, accords synonymes, armure et tonalité relative.
+Réplique numérique interactive, en un seul fichier HTML, de la règle à calcul
+harmonique de Marcel Dadi et Max Meyer : roue de fondamentale organisée en
+cycle des quintes (deux cercles concentriques majeures / relatifs mineurs),
+natures d'accords, gammes et modes, positions sur guitare (plusieurs accordages)
+et clavier, lecture des intervalles, accords synonymes, armure et tonalité
+relative.
 
 Comprend aussi une sortie audio (synthèse WebAudio, diapason réglable) et un
 **looper micro à couches multiples** (overdub) enregistrant depuis le
