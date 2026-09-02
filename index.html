@@ -260,22 +260,29 @@
   .play-btn .tri{width:0;height:0;border-style:solid;border-width:6px 0 6px 10px;border-color:transparent transparent transparent currentColor;}
   .play-btn.playing .tri{width:10px;height:10px;border:0;background:currentColor;}
   .fretboard{width:100%;height:auto;display:block;}
+  /* couleurs = rôle harmonique, identiques à la roue :
+     fondamentale rouge · tierce bleu · quinte jaune · autre note du set vert */
   .fret-note circle{stroke:rgba(42,35,24,0.3);stroke-width:1;}
-  .fret-note.in-set circle{fill:var(--teal);}
-  .fret-note.root circle{fill:var(--oxblood);}
+  .fret-note.role-other circle{fill:var(--teal);}
+  .fret-note.role-root  circle{fill:var(--oxblood);}
+  .fret-note.role-third circle{fill:#33607e;}
+  .fret-note.role-fifth circle{fill:#c99a3a;}
   .fret-note text{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;fill:#fdf8ec;text-anchor:middle;dominant-baseline:middle;pointer-events:none;}
+  .fret-note.role-fifth text{fill:var(--ink);}
   .string-label{font-family:'JetBrains Mono',monospace;font-size:10px;fill:var(--ink-soft);text-anchor:end;}
 
   .key{cursor:default;}
   .key.white rect{fill:#faf6ea;stroke:rgba(42,35,24,0.35);stroke-width:1;}
   .key.black rect{fill:#2a2318;}
-  .key.in-set.white rect{fill:var(--teal);}
-  .key.in-set.black rect{fill:var(--teal);}
-  .key.root.white rect, .key.root.black rect{fill:var(--oxblood);}
+  .key.in-set.role-other rect{fill:var(--teal);}
+  .key.in-set.role-root  rect{fill:var(--oxblood);}
+  .key.in-set.role-third rect{fill:#33607e;}
+  .key.in-set.role-fifth rect{fill:#c99a3a;}
   .key text{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;text-anchor:middle;}
   .key.white text{fill:var(--ink-soft);}
   .key.black text{fill:#e9e0c6;}
-  .key.in-set text, .key.root text{fill:#fdf8ec;}
+  .key.in-set text{fill:#fdf8ec;}
+  .key.in-set.role-fifth text{fill:var(--ink);}
 
   /* ---------- LOOPER ---------- */
   .looper{
@@ -341,7 +348,7 @@
     background:radial-gradient(68% 52% at 50% 46%, rgba(255,255,255,0.30), rgba(255,255,255,0) 72%);
     opacity:0.45;transition:opacity .14s ease;
   }
-  .lp-pad.playing::after, .lp-pad.recording::after, .lp-pad.countin::after{opacity:1;}
+  .lp-pad.playing::after, .lp-pad.recording::after, .lp-pad.countin::after, .lp-pad.armed::after{opacity:1;}
   .lp-pad-ico{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:24px;color:rgba(255,255,255,0.92);text-shadow:0 1px 3px rgba(0,0,0,0.5);pointer-events:none;
@@ -373,6 +380,13 @@
     box-shadow:0 0 0 3px #17171b, inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -14px 20px rgba(0,0,0,0.18),
                0 0 24px 5px rgba(230,170,80,0.62), 0 3px 8px rgba(0,0,0,0.42);
     animation:lppulse .5s ease-in-out infinite;
+  }
+  /* overdub armé : respire lentement, en attendant le début du prochain tour */
+  .lp-pad-rec.armed{
+    background:linear-gradient(180deg,#c8996b,#a8763f 45%,#5e3f1c);
+    box-shadow:0 0 0 3px #17171b, inset 0 2px 3px rgba(255,255,255,0.4), inset 0 -14px 20px rgba(0,0,0,0.2),
+               0 0 20px 4px rgba(210,150,80,0.5), 0 3px 8px rgba(0,0,0,0.42);
+    animation:lppulse 1.5s ease-in-out infinite;
   }
   .lp-pad-rec.recording{
     background:linear-gradient(180deg,#ff8175,#ff3b2f 44%,#b41f16);
@@ -426,7 +440,12 @@
   }
   .lp-beats button.on{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
 
-  .lp-progress{margin-top:12px;height:10px;border-radius:999px;background:rgba(42,35,24,0.14);overflow:hidden;}
+  .lp-progress{
+    margin-top:12px;height:10px;border-radius:999px;background:rgba(42,35,24,0.14);overflow:hidden;
+    transition:box-shadow .15s ease;
+  }
+  .lp-progress.arming{box-shadow:0 0 0 2px rgba(200,140,70,0.85), 0 0 12px rgba(200,140,70,0.5);}
+  .lp-progress.arming .lp-playhead{background:#c8964a;}
   .lp-playhead{height:100%;width:0;background:var(--teal);}
   .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
   .lp-layer{
@@ -830,24 +849,15 @@ const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
 function drawDial(){
   const svg = document.getElementById('dialSvg');
   const cx=150, cy=150;
-  const set = currentSet();
-  const has = pc => set.includes(((pc%12)+12)%12);
-
-  // Rôle harmonique par rapport à la fondamentale : fondamentale, tierce (3–4
-  // demi-tons), quinte (6–8 demi-tons). Le reste n'est pas coloré.
-  const roleOf = pc => {
-    pc = ((pc%12)+12)%12;
-    if(pc === state.root) return 'role-root';
-    if(!has(pc)) return '';
-    const iv = ((pc - state.root)%12 + 12) % 12;
-    if(iv === 3 || iv === 4) return 'role-third';
-    if(iv === 6 || iv === 7 || iv === 8) return 'role-fifth';
-    return '';
-  };
-  // Position de la fondamentale sur la roue, et distance angulaire (en crans).
+  // Rôle harmonique (fondamentale / tierce / quinte), colorié seulement pour les
+  // notes situées à ≤ 2 crans de la fondamentale sur la roue.
   const rootPos = pcToDialPos(state.root);
   const posDist = p => { const d = ((p - rootPos)%12 + 12) % 12; return Math.min(d, 12 - d); };
-  const roleAt = (p, pc) => posDist(p) <= 2 ? roleOf(pc) : '';
+  const roleAt = (p, pc) => {
+    if(posDist(p) > 2) return '';
+    const r = noteRole(pc);
+    return (r === 'root' || r === 'third' || r === 'fifth') ? 'role-' + r : '';
+  };
 
   let deco = `<circle cx="${cx}" cy="${cy}" r="${DIAL.rOut+18}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>
     <circle cx="${cx}" cy="${cy}" r="${(DIAL.rOut+DIAL.rIn)/2}" fill="none" stroke="rgba(42,35,24,0.10)" stroke-width="1"/>`;
@@ -1023,6 +1033,18 @@ function currentSet(){
     return pcSet(state.root, sc.degrees);
   }
 }
+// Rôle d'une note dans l'accord / la gamme en cours — nomenclature commune à la
+// roue et aux instruments : root (rouge) · third 3ce/3–4 demi-tons (bleu) ·
+// fifth 5te/6–8 demi-tons (jaune) · other = autre note du set (vert) · '' hors set.
+function noteRole(pc){
+  pc = ((pc % 12) + 12) % 12;
+  if(pc === state.root) return 'root';
+  if(!currentSet().includes(pc)) return '';
+  const iv = ((pc - state.root) % 12 + 12) % 12;
+  if(iv === 3 || iv === 4) return 'third';
+  if(iv === 6 || iv === 7 || iv === 8) return 'fifth';
+  return 'other';
+}
 
 function drawFretboard(){
   const host = document.getElementById('instrumentHost');
@@ -1066,9 +1088,8 @@ function drawFretboard(){
     for(let f=0; f<=frets; f++){
       const note = ((open+f)%12+12)%12;
       if(!set.includes(note)) continue;
-      const isRoot = note===state.root;
       const x = f===0 ? marginL-16 : (fretX(f-1)+fretX(f))/2;
-      svg += `<g class="fret-note ${isRoot?'root':'in-set'}">
+      svg += `<g class="fret-note role-${noteRole(note) || 'other'}">
         <circle cx="${x}" cy="${stringY(s)}" r="10"></circle>
         <text x="${x}" y="${stringY(s)+1}">${noteNameFor(state.root,note)}</text>
       </g>`;
@@ -1094,9 +1115,8 @@ function drawPiano(){
   for(let i=0;i<whiteCount;i++){
     const pc = whiteSeq[i % 7];
     const inSet = set.includes(pc);
-    const isRoot = pc === state.root;
     const x = i*whiteW;
-    svg += `<g class="key white ${inSet?'in-set':''} ${isRoot?'root':''}">
+    svg += `<g class="key white ${inSet ? 'in-set role-' + (noteRole(pc) || 'other') : ''}">
       <rect x="${x}" y="0" width="${whiteW-2}" height="${whiteH}" rx="4"></rect>
       <text x="${x+whiteW/2-1}" y="${whiteH-16}">${inSet?noteNameFor(state.root,pc):''}</text>
     </g>`;
@@ -1107,9 +1127,8 @@ function drawPiano(){
     const pc = blackAbove[whiteSeq[i % 7]];
     if(pc === undefined) continue;
     const inSet = set.includes(pc);
-    const isRoot = pc === state.root;
     const x = i*whiteW + whiteW - blackW/2 - 1;
-    svg += `<g class="key black ${inSet?'in-set':''} ${isRoot?'root':''}">
+    svg += `<g class="key black ${inSet ? 'in-set role-' + (noteRole(pc) || 'other') : ''}">
       <rect x="${x}" y="0" width="${blackW}" height="${blackH}" rx="3"></rect>
       <text x="${x+blackW/2}" y="${blackH-12}">${inSet?noteNameFor(state.root,pc):''}</text>
     </g>`;
@@ -1368,7 +1387,7 @@ const looper = {
     document.getElementById('lpMain').hidden = false;
     document.getElementById('lpCalWrap').hidden = false;
     this._revealFx();
-    this._hint('Micro actif. Le pad rouge lance un décompte d’une mesure (au tempo réglé), puis l’enregistrement — sa durée fixe la longueur de boucle. Ré-appuie pour arrêter. Le pad vert = lecture / stop.');
+    this._hint('Micro actif. <b>Pad rouge</b> : 1ʳᵉ fois → décompte d’une mesure puis enregistrement (sa durée fixe la boucle). Ensuite → overdub, qui démarre tout seul au début du tour suivant (repère : la tête de lecture qui revient à zéro). <b>Pad vert</b> : lecture / stop.');
     this._syncBtns();
   },
 
@@ -1401,9 +1420,11 @@ const looper = {
     } else if(this.mode === 'playing'){
       if(!this.proc){ this._hint('Active d’abord le micro (bouton 🎤).'); return; }
       if(this._stopped) this.playLoop();
-      this._startCountIn('over');
+      this._armOverdub();
     } else if(this.mode === 'countin'){
       this._cancelCountIn();
+    } else if(this.mode === 'armed'){
+      this._cancelArm();
     } else if(this.mode === 'recFirst'){
       this._finishFirst();
     } else if(this.mode === 'recOver'){
@@ -1620,6 +1641,28 @@ const looper = {
     this._syncBtns();
   },
 
+  // Overdub : pas de décompte ni de diode. On « arme » l'enregistrement, qui
+  // démarre tout seul au prochain passage par le début de la boucle — le
+  // repère visuel est la tête de lecture qui revient à zéro.
+  _armOverdub(){
+    this._countKind = 'over';
+    this.mode = 'armed';
+    const ctx = audio.ctx;
+    const nextT = this.loop0 + Math.ceil((ctx.currentTime - this.loop0 + 0.03) / this.loopLen) * this.loopLen;
+    this._status('Overdub armé — démarre au prochain tour…');
+    this._syncBtns();
+    this._countTimer = setTimeout(()=>{
+      this._countTimer = null;
+      if(this.mode === 'armed' && !this._stopped && this.layers.length) this._beginRecording();
+    }, Math.max(0, (nextT - ctx.currentTime) * 1000));
+  },
+  _cancelArm(){
+    if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
+    this.mode = 'playing';
+    this._status('Overdub annulé.');
+    this._syncBtns();
+  },
+
   _beginRecording(){
     if(this._countKind === 'over'){
       const now = audio.ctx.currentTime;
@@ -1727,6 +1770,7 @@ const looper = {
   // Vrai Stop : on arrête les sources (silence immédiat, tête de lecture figée).
   stopLoop(){
     if(!this.layers.length || this._stopped) return;
+    if(this.mode === 'armed'){ if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; } this.mode = 'playing'; }
     this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} L.node = null; });
     this._stopped = true;
     document.getElementById('lpPlayhead').style.width = '0%';
@@ -1795,15 +1839,18 @@ const looper = {
     const rec  = document.getElementById('lpRecBtn');
     const play = document.getElementById('lpPlayBtn');
     const rON  = this.mode === 'recFirst' || this.mode === 'recOver' || this.mode === 'assembling';
-    const busy = rON || this.mode === 'countin';
+    const busy = rON || this.mode === 'countin' || this.mode === 'armed';
     rec.classList.toggle('recording', rON);
     rec.classList.toggle('countin', this.mode === 'countin');
+    rec.classList.toggle('armed', this.mode === 'armed');
     rec.setAttribute('aria-label',
       this.mode === 'recFirst' ? 'Terminer la boucle' :
       this.mode === 'recOver'  ? 'Arrêter l’overdub' :
       this.mode === 'countin'  ? 'Annuler le décompte' :
+      this.mode === 'armed'    ? 'Annuler l’overdub en attente' :
       this.mode === 'playing'  ? 'Enregistrer une couche' :
                                  'Lancer l’enregistrement');
+    document.getElementById('lpProgWrap').classList.toggle('arming', this.mode === 'armed');
     const has = this.layers.length > 0;
     play.hidden = !has || busy;
     play.classList.toggle('playing', has && !this._stopped);
