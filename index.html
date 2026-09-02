@@ -303,9 +303,25 @@
   .lp-mic:active{transform:translateY(1px);}
   .lp-btn{
     font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;border-radius:999px;
-    padding:7px 12px;cursor:pointer;border:1px solid transparent;transition:filter .15s,transform .05s;
+    padding:10px 14px;min-height:40px;cursor:pointer;border:1px solid transparent;
+    transition:filter .15s,transform .05s;
   }
   .lp-btn:active{transform:translateY(1px);}
+  /* cibles tactiles : gros pouces */
+  .looper input[type=range]{
+    -webkit-appearance:none;appearance:none;height:30px;background:transparent;cursor:pointer;
+  }
+  .looper input[type=range]::-webkit-slider-runnable-track{
+    height:8px;border-radius:5px;background:rgba(42,35,24,0.22);
+  }
+  .looper input[type=range]::-moz-range-track{height:8px;border-radius:5px;background:rgba(42,35,24,0.22);}
+  .looper input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;
+    background:var(--teal);border:2px solid #fdf8ec;box-shadow:0 1px 4px rgba(0,0,0,0.35);
+  }
+  .looper input[type=range]::-moz-range-thumb{
+    width:26px;height:26px;border-radius:50%;background:var(--teal);border:2px solid #fdf8ec;
+  }
   /* Pads type Roland Verselab : silicone rétro-éclairé, coins arrondis, cadre sombre,
      lueur interne qui s'intensifie quand le pad est actif. */
   .lp-pads{display:flex;gap:10px;margin:12px 0 4px;}
@@ -370,34 +386,69 @@
   .lp-tools{flex-wrap:nowrap;gap:5px;overflow-x:auto;justify-content:center;padding-bottom:2px;}
   .lp-tools .lp-btn{flex:0 0 auto;font-size:11px;padding:6px 9px;white-space:nowrap;}
   .lp-tools .lp-icon{padding:6px 9px;font-size:13px;}
-  .lp-status{font-size:11px;color:var(--ink-soft);text-align:center;width:100%;min-height:14px;}
-  .lp-metro{display:flex;gap:9px;justify-content:center;margin:4px 0 2px;min-height:13px;}
+  .lp-status{font-size:11.5px;color:var(--ink-soft);text-align:center;width:100%;min-height:15px;}
+  /* rangée de diodes : décompte + battement du métronome */
+  .lp-metro{display:flex;gap:12px;justify-content:center;margin:8px 0 4px;min-height:18px;}
   .lp-metro span{
-    width:11px;height:11px;border-radius:50%;background:rgba(42,35,24,0.18);
-    transition:background .08s ease,transform .08s ease;
+    width:16px;height:16px;border-radius:50%;background:rgba(42,35,24,0.16);
+    box-shadow:inset 0 1px 2px rgba(42,35,24,0.25);
+    transition:background .07s ease,transform .07s ease,box-shadow .07s ease;
   }
-  .lp-metro span.on{background:var(--oxblood);transform:scale(1.25);}
-  .lp-progress{margin-top:12px;height:7px;border-radius:999px;background:rgba(42,35,24,0.12);overflow:hidden;}
+  .lp-metro span.on{
+    background:var(--oxblood);transform:scale(1.3);
+    box-shadow:0 0 10px 3px rgba(143,50,41,0.6);
+  }
+  .lp-metro span.on.beat1{background:var(--brass-light);box-shadow:0 0 12px 4px rgba(214,169,74,0.7);}
+
+  /* métronome paramétrable */
+  .lp-metronome{
+    margin-top:8px;padding:9px 10px;border-radius:9px;
+    background:rgba(42,35,24,0.05);border:1px solid rgba(42,35,24,0.16);
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .lp-metro-line{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .lp-mlabel{font-size:11px;color:var(--ink-soft);font-weight:600;}
+  .lp-mbtn{
+    font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+    min-height:42px;min-width:42px;padding:8px 12px;cursor:pointer;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);border-radius:8px;
+  }
+  .lp-mbtn:active{transform:translateY(1px);}
+  .lp-mtoggle.on{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
+  .lp-bpm{display:flex;align-items:center;gap:8px;}
+  .lp-bpm-val{font-size:12px;color:var(--ink-soft);min-width:64px;text-align:center;}
+  .lp-bpm-val b{font-size:17px;color:var(--ink);font-family:'JetBrains Mono',monospace;}
+  .lp-beats{display:flex;gap:6px;}
+  .lp-beats button{
+    font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+    min-height:42px;min-width:42px;cursor:pointer;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);border-radius:8px;
+  }
+  .lp-beats button.on{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
+
+  .lp-progress{margin-top:12px;height:10px;border-radius:999px;background:rgba(42,35,24,0.14);overflow:hidden;}
   .lp-playhead{height:100%;width:0;background:var(--teal);}
-  .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:5px;}
+  .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
   .lp-layer{
-    display:flex;align-items:center;gap:7px;font-size:12px;
+    display:flex;flex-direction:column;gap:6px;font-size:12px;
     background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);
-    border-radius:7px;padding:5px 8px;
+    border-radius:8px;padding:8px 10px;
   }
-  .lp-layer .nm{flex:0 0 auto;color:var(--ink);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:10.5px;}
-  .lp-layer input.lvl{flex:1;min-width:50px;}
-  .lp-layer .lvlval{flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-soft);width:30px;text-align:right;}
+  .lp-layer-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .lp-layer-bot{display:flex;align-items:center;gap:10px;}
+  .lp-layer .nm{color:var(--ink);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;}
+  .lp-layer input.lvl{flex:1;min-width:60px;}
+  .lp-layer .lvlval{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-soft);}
   .lp-layer.muted .nm,.lp-layer.muted input.lvl,.lp-layer.muted .lvlval{opacity:0.4;}
   .lp-layer button.mute{
-    flex:0 0 auto;background:transparent;border:1px solid rgba(42,35,24,0.28);
-    border-radius:6px;padding:2px 6px;font-size:12px;line-height:1;cursor:pointer;
+    flex:0 0 auto;background:transparent;border:1px solid rgba(42,35,24,0.3);
+    border-radius:8px;min-width:46px;min-height:40px;font-size:16px;line-height:1;cursor:pointer;
   }
-  .lp-slider{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-soft);margin-top:9px;}
+  .lp-slider{display:flex;align-items:center;gap:10px;font-size:10.5px;color:var(--ink-soft);margin-top:9px;}
   .lp-slider input{flex:1;}
   .lp-cal{margin-top:11px;}
-  .lp-cal-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--ink-soft);}
-  .lp-cal-auto{font-size:10px;padding:3px 9px;}
+  .lp-cal-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink-soft);}
+  .lp-cal-auto{font-size:11px;padding:8px 14px;}
   .lp-fx{margin-top:12px;border-top:1px solid rgba(42,35,24,0.16);padding-top:10px;}
   .lp-fx-head{
     font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);
@@ -406,16 +457,16 @@
   .lp-fx-body{display:flex;flex-direction:column;gap:7px;margin-top:9px;}
   .fx-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
   .fx-on{
-    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
     background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);
-    border-radius:6px;padding:3px 9px;cursor:pointer;min-width:58px;
+    border-radius:7px;padding:8px 11px;cursor:pointer;min-width:66px;min-height:38px;
   }
   .fx-on.active{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
   .fx-row label{
-    display:flex;align-items:center;gap:4px;font-size:8.5px;color:var(--ink-soft);
+    display:flex;align-items:center;gap:5px;font-size:9px;color:var(--ink-soft);
     text-transform:uppercase;letter-spacing:0.04em;
   }
-  .fx-row input[type=range]{width:62px;}
+  .fx-row input[type=range]{width:84px;}
   .fx-sel{
     font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--panel-dark);
     border:1px solid rgba(42,35,24,0.25);color:var(--ink);border-radius:5px;padding:2px 4px;
@@ -431,12 +482,13 @@
     background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);border-radius:7px;padding:6px 8px;
   }
   .lp-lib-row1{display:flex;align-items:baseline;gap:8px;}
-  .lp-lib-row2{display:flex;flex-wrap:wrap;gap:5px;}
+  .lp-lib-row2{display:flex;flex-wrap:wrap;gap:6px;}
   .lp-lib-list .nm{flex:1;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .lp-lib-list .meta{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;font-size:9.5px;flex:0 0 auto;}
   .lp-lib-list button{
-    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;background:transparent;
-    border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:transparent;
+    border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:7px;padding:8px 11px;
+    min-height:38px;cursor:pointer;
   }
   .lp-lib-list button.load{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
   .lp-lib-list button.del{color:var(--oxblood);border-color:rgba(143,50,41,0.4);}
@@ -510,6 +562,25 @@
             <div class="lp-metro" id="lpMetro" hidden><span></span><span></span><span></span><span></span></div>
             <div class="row lp-center">
               <span class="lp-status" id="lpStatus"></span>
+            </div>
+            <div class="lp-metronome" id="lpMetronome">
+              <div class="lp-metro-line">
+                <button class="lp-mbtn lp-mtoggle" id="lpMetroToggle" type="button" aria-pressed="false">🎵 Métronome</button>
+                <div class="lp-bpm">
+                  <button class="lp-mbtn" id="lpBpmDn" type="button" aria-label="Tempo moins">−</button>
+                  <span class="lp-bpm-val"><b id="lpBpmVal">100</b> BPM</span>
+                  <button class="lp-mbtn" id="lpBpmUp" type="button" aria-label="Tempo plus">+</button>
+                </div>
+              </div>
+              <div class="lp-metro-line">
+                <span class="lp-mlabel">Temps / mesure</span>
+                <div class="lp-beats" id="lpBeatsSel">
+                  <button type="button" data-b="2">2</button>
+                  <button type="button" data-b="3">3</button>
+                  <button type="button" data-b="4" class="on">4</button>
+                  <button type="button" data-b="6">6</button>
+                </div>
+              </div>
             </div>
             <div class="row lp-tools" id="lpToolRow" hidden>
               <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" aria-label="Annuler la dernière couche" title="Annuler la dernière couche">↶ Annuler</button>
@@ -1254,6 +1325,8 @@ const looper = {
   latencyComp:0.15,
   _countTimer:null, _countKind:'first',
   _calibrating:false, _calBlocks:null,
+  metro:{ on:false, bpm:100, beats:4, vol:0.4 },
+  _metroTimer:null, _metroNextT:0, _metroBeat:0, _metroAnchor:0,
 
   _ensureAudioOut(){
     audio.init(); audio.resume();
@@ -1295,7 +1368,7 @@ const looper = {
     document.getElementById('lpMain').hidden = false;
     document.getElementById('lpCalWrap').hidden = false;
     this._revealFx();
-    this._hint('Micro actif. Appuie sur le bouton rouge&nbsp;: un décompte de 4 temps (bips) démarre, puis l’enregistrement commence — sa durée fixe la longueur de boucle. Ré-appuie pour arrêter.');
+    this._hint('Micro actif. Le pad rouge lance un décompte d’une mesure (au tempo réglé), puis l’enregistrement — sa durée fixe la longueur de boucle. Ré-appuie pour arrêter. Le pad vert = lecture / stop.');
     this._syncBtns();
   },
 
@@ -1340,19 +1413,92 @@ const looper = {
     }
   },
 
-  // Bip de métronome — envoyé direct à la sortie, hors chaîne de capture (non enregistré).
-  _beep(accent){
+  // Clic — envoyé direct à la sortie, hors de la chaîne de capture.
+  // À l'écoute au haut-parleur il peut légèrement fuir dans le micro : pour un
+  // enregistrement propre, utiliser des écouteurs.
+  _metroClick(t, accent){
     const ctx = audio.ctx; if(!ctx) return;
-    const t = ctx.currentTime;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = accent ? 1320 : 880;
+    o.type = 'square';
+    o.frequency.value = accent ? 1600 : 1000;
     o.connect(g); g.connect(ctx.destination);
+    const v = Math.max(0.02, this.metro.vol) * (accent ? 1 : 0.62);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(accent ? 0.36 : 0.22, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-    o.start(t); o.stop(t + 0.16);
+    g.gain.exponentialRampToValueAtTime(v, t + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    o.start(t); o.stop(t + 0.06);
+  },
+
+  // Rangée de diodes = un rond par temps de la mesure.
+  _renderBeatDots(){
+    const m = document.getElementById('lpMetro');
+    if(m.children.length !== this.metro.beats){
+      m.innerHTML = Array.from({length:this.metro.beats}, ()=> '<span></span>').join('');
+    }
+  },
+  _beatDotsOff(){
+    document.getElementById('lpMetro').querySelectorAll('span').forEach(d=> d.classList.remove('on','beat1'));
+  },
+  // Allume la diode du temps `idx` à l'instant `t` (planifié via setTimeout).
+  _beatFlash(idx, t){
+    const delay = Math.max(0, (t - audio.ctx.currentTime) * 1000);
+    setTimeout(()=>{
+      if(!this.metro.on && this.mode !== 'countin') return;   // arrêté entre-temps
+      const dots = document.getElementById('lpMetro').children;
+      for(let i=0;i<dots.length;i++){
+        dots[i].classList.toggle('on', i === idx);
+        dots[i].classList.toggle('beat1', i === idx && idx === 0);
+      }
+    }, delay);
+  },
+
+  /* ---- métronome paramétrable ---- */
+  toggleMetro(){ this.metro.on ? this.stopMetro() : this.startMetro(); },
+  startMetro(){
+    if(!this._ensureAudioOut()) return;
+    this.metro.on = true;
+    this._renderBeatDots();
+    document.getElementById('lpMetro').hidden = false;
+    this._metroBeat = 0;
+    this._metroNextT = audio.ctx.currentTime + 0.1;
+    this._metroAnchor = this._metroNextT;
+    if(this._metroTimer) clearInterval(this._metroTimer);
+    this._metroTimer = setInterval(()=> this._metroSched(), 25);
+    this._syncMetroUI();
+  },
+  stopMetro(){
+    this.metro.on = false;
+    if(this._metroTimer){ clearInterval(this._metroTimer); this._metroTimer = null; }
+    if(this.mode !== 'countin'){
+      this._beatDotsOff();
+      document.getElementById('lpMetro').hidden = true;
+    }
+    this._syncMetroUI();
+  },
+  _metroSched(){
+    const ctx = audio.ctx, spb = 60 / this.metro.bpm;
+    while(this._metroNextT < ctx.currentTime + 0.13){
+      const b = this._metroBeat % this.metro.beats;
+      this._metroClick(this._metroNextT, b === 0);
+      this._beatFlash(b, this._metroNextT);
+      this._metroNextT += spb;
+      this._metroBeat++;
+    }
+  },
+  setBpm(v){
+    this.metro.bpm = Math.max(40, Math.min(240, Math.round(v)));
+    document.getElementById('lpBpmVal').textContent = this.metro.bpm;
+  },
+  setBeats(n){
+    this.metro.beats = n;
+    document.querySelectorAll('#lpBeatsSel button').forEach(b=> b.classList.toggle('on', +b.dataset.b === n));
+    this._renderBeatDots();
+  },
+  _syncMetroUI(){
+    const t = document.getElementById('lpMetroToggle');
+    t.classList.toggle('on', this.metro.on);
+    t.setAttribute('aria-pressed', String(this.metro.on));
   },
 
   // Calage automatique : émet des clics vers le haut-parleur, les réenregistre par
@@ -1430,39 +1576,45 @@ const looper = {
     this._status('Latence mesurée ≈ ' + ms + ' ms — calage appliqué (ajuste au curseur si besoin).');
   },
 
-  // Décompte de 4 temps (un bip par seconde) avant de lancer la capture,
-  // le temps de se caler sur son instrument. L'enregistrement démarre sur le 5e temps.
+  // Décompte d'une mesure au tempo réglé (diodes + clics), puis l'enregistrement
+  // démarre sur le premier temps suivant. Si le métronome tourne déjà, on
+  // s'aligne sur sa grille et on le laisse produire les clics.
   _startCountIn(kind){
     this._countKind = kind;
     this.mode = 'countin';
-    const metro = document.getElementById('lpMetro');
-    const dots = metro.querySelectorAll('span');
-    dots.forEach(d=> d.classList.remove('on'));
-    metro.hidden = false;
+    const ctx = audio.ctx;
+    const beats = this.metro.beats, spb = 60 / this.metro.bpm;
+    this._renderBeatDots();
+    this._beatDotsOff();
+    document.getElementById('lpMetro').hidden = false;
     this._syncBtns();
-    let beat = 0;
-    const tick = ()=>{
-      beat++;
-      if(beat <= 4){
-        dots[beat-1].classList.add('on');
-        this._beep(beat === 1);
-        this._status('Départ… ' + beat + ' / 4');
-        this._countTimer = setTimeout(tick, 1000);
-      } else {
-        this._countTimer = null;
-        metro.hidden = true;
-        dots.forEach(d=> d.classList.remove('on'));
-        this._beginRecording();
-      }
-    };
-    tick();
+
+    let t0;
+    if(this.metro.on){
+      t0 = this._metroAnchor + Math.ceil((ctx.currentTime + 0.05 - this._metroAnchor) / spb) * spb;
+    } else {
+      t0 = ctx.currentTime + 0.12;
+    }
+    for(let k=0;k<beats;k++){
+      const tk = t0 + k*spb;
+      if(!this.metro.on) this._metroClick(tk, k === 0);
+      this._beatFlash(k, tk);
+    }
+    this._status('Décompte…');
+    const startAt = t0 + beats*spb;
+    this._countTimer = setTimeout(()=>{
+      this._countTimer = null;
+      if(!this.metro.on){ this._beatDotsOff(); document.getElementById('lpMetro').hidden = true; }
+      this._beginRecording();
+    }, Math.max(0, (startAt - ctx.currentTime) * 1000));
   },
 
   _cancelCountIn(){
     if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
-    const metro = document.getElementById('lpMetro');
-    metro.hidden = true;
-    metro.querySelectorAll('span').forEach(d=> d.classList.remove('on'));
+    if(!this.metro.on){
+      this._beatDotsOff();
+      document.getElementById('lpMetro').hidden = true;
+    }
     this.mode = this._countKind === 'over' ? 'playing' : 'idle';
     this._status(this._countKind === 'over' ? 'Décompte annulé.' : '');
     this._syncBtns();
@@ -1563,7 +1715,7 @@ const looper = {
   },
   clearAll(){
     if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
-    document.getElementById('lpMetro').hidden = true;
+    if(!this.metro.on){ this._beatDotsOff(); document.getElementById('lpMetro').hidden = true; }
     this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} });
     this.layers = []; this.loopLen = 0; this.loopSamples = 0; this.mode = 'idle';
     this._stopped = false;
@@ -1623,10 +1775,14 @@ const looper = {
     const host = document.getElementById('lpLayers');
     host.innerHTML = this.layers.map((L,i)=>
       `<div class="lp-layer ${L.muted ? 'muted' : ''}" data-i="${i}">
-        <span class="nm">C${i+1}</span>
-        <input type="range" class="lvl" data-i="${i}" min="0" max="1.3" step="0.02" value="${L.vol}" aria-label="Volume couche ${i+1}">
-        <span class="lvlval">${Math.round(L.vol*100)}%</span>
-        <button class="mute" data-i="${i}" aria-label="${L.muted ? 'Réactiver' : 'Couper'} la couche ${i+1}">${L.muted ? '🔇' : '🔊'}</button>
+        <div class="lp-layer-top">
+          <span class="nm">Couche ${i+1}</span>
+          <span class="lvlval">${Math.round(L.vol*100)}%</span>
+        </div>
+        <div class="lp-layer-bot">
+          <input type="range" class="lvl" data-i="${i}" min="0" max="1.3" step="0.02" value="${L.vol}" aria-label="Volume couche ${i+1}">
+          <button class="mute" data-i="${i}" aria-label="${L.muted ? 'Réactiver' : 'Couper'} la couche ${i+1}">${L.muted ? '🔇' : '🔊'}</button>
+        </div>
       </div>`).join('');
     host.querySelectorAll('input.lvl').forEach(inp=>{
       inp.addEventListener('input', ()=> this.setLayerVol(parseInt(inp.dataset.i, 10), parseFloat(inp.value)));
@@ -1984,6 +2140,12 @@ document.getElementById('lpCal').addEventListener('input', e=>{
   document.getElementById('lpCalVal').textContent = e.target.value + ' ms';
 });
 document.getElementById('lpCalAuto').addEventListener('click', ()=>looper.calibrate());
+document.getElementById('lpMetroToggle').addEventListener('click', ()=>looper.toggleMetro());
+document.getElementById('lpBpmDn').addEventListener('click', ()=>looper.setBpm(looper.metro.bpm - 2));
+document.getElementById('lpBpmUp').addEventListener('click', ()=>looper.setBpm(looper.metro.bpm + 2));
+document.getElementById('lpBeatsSel').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(b) looper.setBeats(parseInt(b.dataset.b, 10));
+});
 (function(){
   const lpFx = document.getElementById('lpFx');
   document.getElementById('lpFxToggle').addEventListener('click', e=>{
