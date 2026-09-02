@@ -8,6 +8,18 @@
 <meta property="og:title" content="DadiLooper — réplique numérique de la Règle à Dadi">
 <meta property="og:description" content="Réplique numérique de la règle à calcul harmonique inventée par Marcel Dadi et son frère Max Meyer (brevet n°81 21394). Tournez la roue, choisissez une fonction, lisez les fenêtres.">
 <meta name="robots" content="index,follow">
+
+<!-- Installation façon application (écran d'accueil iPad / Android) -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#152229">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="DadiLooper">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -2217,6 +2229,11 @@ looper._renderLib();
 
 setMutedUI();
 render();
+
+// Service worker : permet à l'app de se lancer hors ligne une fois installée.
+if('serviceWorker' in navigator){
+  addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 </script>
 </body>
 </html>
