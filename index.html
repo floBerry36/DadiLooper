@@ -306,20 +306,62 @@
     padding:7px 12px;cursor:pointer;border:1px solid transparent;transition:filter .15s,transform .05s;
   }
   .lp-btn:active{transform:translateY(1px);}
+  /* Pad d'enregistrement : plastique translucide, diode centrale qui illumine la touche */
   .lp-rec{
-    width:74px;height:74px;padding:0;border-radius:50%;
-    background:var(--oxblood);border:none;color:#fbeee9;cursor:pointer;
-    font-size:0;line-height:0;display:flex;align-items:center;justify-content:center;
-    margin:6px auto 4px;box-shadow:0 6px 16px -6px rgba(143,50,41,0.75);
-    transition:filter .15s ease,transform .05s ease;
+    display:block;width:100%;min-height:118px;padding:0;margin:10px 0;
+    border:1px solid rgba(42,35,24,0.28);border-radius:16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.06) 34%,
+                              rgba(42,35,24,0.04) 60%, rgba(42,35,24,0.13) 100%),
+      rgba(143,50,41,0.10);
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,0.55),
+      inset 0 -14px 22px rgba(42,35,24,0.16),
+      0 4px 10px -3px rgba(42,35,24,0.4);
+    cursor:pointer;position:relative;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+    transition:box-shadow .15s ease, background .2s ease, transform .05s ease;
   }
-  .lp-rec:hover{filter:brightness(1.12);}
+  .lp-rec::before{                      /* reflet de surface */
+    content:"";position:absolute;left:5%;right:5%;top:5px;height:42%;
+    border-radius:12px;pointer-events:none;
+    background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+  }
+  .lp-rec-led{
+    position:absolute;left:50%;top:22px;transform:translateX(-50%);
+    width:16px;height:16px;border-radius:50%;
+    background:radial-gradient(circle at 38% 34%, #7d241c, #3c110d 70%);
+    box-shadow:inset 0 1px 2px rgba(255,255,255,0.35), 0 0 0 3px rgba(42,35,24,0.12);
+    transition:background .12s ease, box-shadow .12s ease;
+  }
+  .lp-rec:hover{filter:brightness(1.04);}
   .lp-rec:active{transform:translateY(1px);}
-  .lp-rec.recording{animation:lppulse 1s ease-in-out infinite;}
-  .lp-rec.countin{animation:lppulse .5s ease-in-out infinite;}
-  @keyframes lppulse{50%{filter:brightness(1.45);transform:scale(1.05);}}
+  .lp-rec.countin{
+    background:linear-gradient(180deg, rgba(255,255,255,0.4), rgba(214,169,74,0.18) 55%, rgba(214,169,74,0.28));
+  }
+  .lp-rec.countin .lp-rec-led{
+    background:radial-gradient(circle at 38% 34%, #ffd9a0, #e6a24a 65%);
+    box-shadow:0 0 14px 5px rgba(230,162,74,0.85), inset 0 1px 2px rgba(255,255,255,0.6);
+    animation:lppulse .5s ease-in-out infinite;
+  }
+  .lp-rec.recording{
+    background:linear-gradient(180deg, rgba(255,255,255,0.32), rgba(220,70,52,0.30) 45%, rgba(150,36,28,0.34));
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,0.4),
+      inset 0 0 34px rgba(255,70,50,0.55),
+      0 4px 14px -2px rgba(200,50,40,0.55);
+  }
+  .lp-rec.recording .lp-rec-led{
+    background:radial-gradient(circle at 38% 34%, #ffe1dc, #ff3b2f 60%);
+    box-shadow:0 0 18px 7px rgba(255,60,45,0.9), inset 0 1px 2px rgba(255,255,255,0.7);
+    animation:lppulse 1s ease-in-out infinite;
+  }
+  @keyframes lppulse{50%{opacity:0.55;}}
   .lp-ghost{background:var(--panel-dark);color:var(--ink);border-color:rgba(42,35,24,0.25);}
   .lp-ghost:hover{border-color:var(--oxblood);}
+  .lp-tools{flex-wrap:nowrap;gap:5px;overflow-x:auto;justify-content:center;padding-bottom:2px;}
+  .lp-tools .lp-btn{flex:0 0 auto;font-size:11px;padding:6px 9px;white-space:nowrap;}
+  .lp-tools .lp-icon{padding:6px 9px;font-size:13px;}
   .lp-status{font-size:11px;color:var(--ink-soft);text-align:center;width:100%;min-height:14px;}
   .lp-metro{display:flex;gap:9px;justify-content:center;margin:4px 0 2px;min-height:13px;}
   .lp-metro span{
@@ -447,21 +489,19 @@
             <button class="lp-mic" id="lpMicBtn" type="button" aria-label="Activer le micro">🎤</button>
           </div>
           <div id="lpMain" hidden>
-            <div class="row lp-center">
-              <button class="lp-rec" id="lpRecBtn" type="button" aria-label="Lancer l’enregistrement"></button>
-            </div>
+            <button class="lp-rec" id="lpRecBtn" type="button" aria-label="Lancer l’enregistrement">
+              <span class="lp-rec-led" aria-hidden="true"></span>
+            </button>
             <div class="lp-metro" id="lpMetro" hidden><span></span><span></span><span></span><span></span></div>
             <div class="row lp-center">
               <span class="lp-status" id="lpStatus"></span>
             </div>
-            <div class="row lp-center">
-              <button class="lp-btn lp-ghost" id="lpPlayBtn" type="button" hidden>■ Stop</button>
-              <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" hidden>Annuler la dernière</button>
-              <button class="lp-btn lp-ghost" id="lpClearBtn" type="button" hidden>Tout effacer</button>
-            </div>
-            <div class="row lp-center" id="lpSaveRow" hidden>
-              <button class="lp-btn lp-ghost" id="lpSaveBtn" type="button">💾 Sauvegarder</button>
-              <button class="lp-btn lp-ghost" id="lpExportBtn" type="button">⬇ Export .wav</button>
+            <div class="row lp-tools" id="lpToolRow" hidden>
+              <button class="lp-btn lp-ghost" id="lpPlayBtn" type="button">■ Stop</button>
+              <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" aria-label="Annuler la dernière couche" title="Annuler la dernière couche">↶ Annuler</button>
+              <button class="lp-btn lp-ghost" id="lpClearBtn" type="button" aria-label="Tout effacer" title="Tout effacer">✕ Effacer</button>
+              <button class="lp-btn lp-ghost lp-icon" id="lpSaveBtn" type="button" aria-label="Sauvegarder la boucle" title="Sauvegarder la boucle">💾</button>
+              <button class="lp-btn lp-ghost lp-icon" id="lpExportBtn" type="button" aria-label="Exporter en .wav" title="Exporter en .wav">⬇</button>
             </div>
             <div class="lp-progress" id="lpProgWrap" hidden><div class="lp-playhead" id="lpPlayhead"></div></div>
             <div class="lp-layers" id="lpLayers"></div>
@@ -1483,8 +1523,6 @@ const looper = {
   _syncBtns(){
     const rec  = document.getElementById('lpRecBtn');
     const play = document.getElementById('lpPlayBtn');
-    const undo = document.getElementById('lpUndoBtn');
-    const clr  = document.getElementById('lpClearBtn');
     const rON  = this.mode === 'recFirst' || this.mode === 'recOver' || this.mode === 'assembling';
     const busy = rON || this.mode === 'countin';
     rec.classList.toggle('recording', rON);
@@ -1496,9 +1534,8 @@ const looper = {
       this.mode === 'playing'  ? 'Enregistrer une couche' :
                                  'Lancer l’enregistrement');
     const has = this.layers.length > 0;
-    play.hidden = undo.hidden = clr.hidden = !has || busy;
+    document.getElementById('lpToolRow').hidden = !has || busy;
     play.textContent = this._stopped ? '▶ Lecture' : '■ Stop';
-    document.getElementById('lpSaveRow').hidden = !has || busy;
   },
   _status(t){ document.getElementById('lpStatus').textContent = t; },
   _hint(t){ document.getElementById('lpHint').innerHTML = t; },
