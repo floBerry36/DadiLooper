@@ -381,19 +381,23 @@
   .lp-playhead{height:100%;width:0;background:var(--teal);}
   .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:5px;}
   .lp-layer{
-    display:flex;align-items:center;gap:10px;font-size:12px;
+    display:flex;align-items:center;gap:7px;font-size:12px;
     background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);
-    border-radius:7px;padding:6px 9px;
+    border-radius:7px;padding:5px 8px;
   }
-  .lp-layer .nm{flex:1;color:var(--ink);font-weight:600;}
-  .lp-layer.muted .nm{opacity:0.4;}
-  .lp-layer button{
-    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:transparent;
-    border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer;
+  .lp-layer .nm{flex:0 0 auto;color:var(--ink);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:10.5px;}
+  .lp-layer input.lvl{flex:1;min-width:50px;}
+  .lp-layer .lvlval{flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-soft);width:30px;text-align:right;}
+  .lp-layer.muted .nm,.lp-layer.muted input.lvl,.lp-layer.muted .lvlval{opacity:0.4;}
+  .lp-layer button.mute{
+    flex:0 0 auto;background:transparent;border:1px solid rgba(42,35,24,0.28);
+    border-radius:6px;padding:2px 6px;font-size:12px;line-height:1;cursor:pointer;
   }
-  .lp-layer button.on{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
-  .lp-slider{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-soft);margin-top:11px;}
+  .lp-slider{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-soft);margin-top:9px;}
   .lp-slider input{flex:1;}
+  .lp-cal{margin-top:11px;}
+  .lp-cal-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--ink-soft);}
+  .lp-cal-auto{font-size:10px;padding:3px 9px;}
   .lp-fx{margin-top:12px;border-top:1px solid rgba(42,35,24,0.16);padding-top:10px;}
   .lp-fx-head{
     font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);
@@ -515,11 +519,16 @@
             </div>
             <div class="lp-progress" id="lpProgWrap" hidden><div class="lp-playhead" id="lpPlayhead"></div></div>
             <div class="lp-layers" id="lpLayers"></div>
-            <label class="lp-slider" id="lpCalWrap" hidden>
-              Calage overdub
-              <input type="range" id="lpCal" min="0" max="300" step="5" value="150">
-              <span id="lpCalVal">150&nbsp;ms</span>
-            </label>
+            <div class="lp-cal" id="lpCalWrap" hidden>
+              <div class="lp-cal-row">
+                <span>Calage overdub</span>
+                <button class="lp-btn lp-ghost lp-cal-auto" id="lpCalAuto" type="button" title="Mesurer automatiquement la latence micro / haut-parleur">Auto</button>
+              </div>
+              <label class="lp-slider">
+                <input type="range" id="lpCal" min="0" max="300" step="5" value="150">
+                <span id="lpCalVal">150&nbsp;ms</span>
+              </label>
+            </div>
             <div class="lp-fx" id="lpFx" hidden>
               <button class="lp-fx-head" id="lpFxToggle" type="button" aria-expanded="false">Effets ▸</button>
               <div class="lp-fx-body" id="lpFxBody" hidden>
@@ -1244,6 +1253,7 @@ const looper = {
   chunks:[], recCount:0, recPhase:0, targetSamples:0,
   latencyComp:0.15,
   _countTimer:null, _countKind:'first',
+  _calibrating:false, _calBlocks:null,
 
   _ensureAudioOut(){
     audio.init(); audio.resume();
@@ -1290,6 +1300,10 @@ const looper = {
   },
 
   _capture(e){
+    if(this._calibrating){
+      this._calBlocks.push({ t: audio.ctx.currentTime, data: new Float32Array(e.inputBuffer.getChannelData(0)) });
+      return;
+    }
     if(this.mode !== 'recFirst' && this.mode !== 'recOver') return;
     const inp = e.inputBuffer.getChannelData(0);
     if(this.mode === 'recFirst'){
@@ -1339,6 +1353,81 @@ const looper = {
     g.gain.exponentialRampToValueAtTime(accent ? 0.36 : 0.22, t + 0.005);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
     o.start(t); o.stop(t + 0.16);
+  },
+
+  // Calage automatique : émet des clics vers le haut-parleur, les réenregistre par
+  // le micro, mesure le retard aller-retour et l'applique à « Calage overdub ».
+  // Approximatif (dépend de l'appareil, du volume, de la pièce) — le curseur reste
+  // là pour l'ajustement fin. Ne corrige QUE la latence fixe d'E/S : l'overdub est
+  // de toute façon verrouillé à la longueur exacte de la boucle, il ne peut pas
+  // « dériver » en tempo.
+  async calibrate(){
+    if(!this.proc){ this._hint('Active le micro (bouton 🎤) avant de calibrer.'); return; }
+    if(this.mode !== 'idle' && this.mode !== 'playing'){ this._status('Calibration : arrête d’abord l’enregistrement.'); return; }
+    const ctx = audio.ctx, sr = ctx.sampleRate;
+    const btn = document.getElementById('lpCalAuto');
+    btn.disabled = true;
+    this._status('Calibration… laisse le micro capter le son du haut-parleur.');
+
+    this._calBlocks = [];
+    this._calibrating = true;
+    const busGain = this.bus ? this.bus.gain.value : 1;
+    if(this.bus) this.bus.gain.value = 0;   // couper les boucles pendant la mesure
+
+    const N = 5, gap = 0.42, t0 = ctx.currentTime + 0.3;
+    const clicks = [];
+    for(let k=0;k<N;k++){
+      const t = t0 + k*gap; clicks.push(t);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = 2200;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.6, t + 0.0015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      o.start(t); o.stop(t + 0.05);
+    }
+    const endT = t0 + N*gap + 0.35;
+    await new Promise(r=> setTimeout(r, (endT - ctx.currentTime)*1000 + 80));
+    this._calibrating = false;
+    btn.disabled = false;
+    if(this.bus) this.bus.gain.value = busGain;
+
+    const blocks = this._calBlocks; this._calBlocks = null;
+    if(!blocks || blocks.length < 3){ this._status('Calibration impossible (pas de signal micro).'); return; }
+    const bl = blocks[0].data.length;
+    const buf = new Float32Array(blocks.length * bl);
+    blocks.forEach((b,idx)=> buf.set(b.data, idx*bl));
+    // Heure de capture d'un échantillon global i : le bloc b est livré à b.t, son
+    // dernier échantillon date de ~b.t.
+    const capTime = i =>{
+      const bi = Math.min(blocks.length-1, Math.floor(i/bl));
+      return blocks[bi].t - (bl - (i - bi*bl))/sr;
+    };
+    let noise = 0; const nS = Math.min(buf.length, Math.floor(sr*0.2));
+    for(let i=0;i<nS;i++) noise += Math.abs(buf[i]);
+    noise = (noise/nS) || 1e-4;
+    const thr = Math.max(0.015, noise*8);
+    const outLat = ctx.outputLatency || ctx.baseLatency || 0;
+
+    const lags = [];
+    for(const ct of clicks){
+      const emit = ct + outLat;
+      let hit = -1;
+      for(let i=0;i<buf.length;i++){
+        if(capTime(i) < ct) continue;
+        if(capTime(i) > ct + 0.5) break;
+        if(Math.abs(buf[i]) > thr){ hit = i; break; }
+      }
+      if(hit >= 0){ const lag = capTime(hit) - emit; if(lag > 0.005 && lag < 0.5) lags.push(lag); }
+    }
+    if(lags.length < 2){ this._status('Calibration ratée : monte le volume du haut-parleur et réessaie (micro non couvert).'); return; }
+    lags.sort((a,b)=> a-b);
+    const med = lags[Math.floor(lags.length/2)];
+    const ms = Math.max(0, Math.min(300, Math.round(med*1000)));
+    this.latencyComp = ms/1000;
+    const sl = document.getElementById('lpCal');
+    if(sl){ sl.value = Math.min(300, ms); document.getElementById('lpCalVal').innerHTML = ms + '&nbsp;ms'; }
+    this._status('Latence mesurée ≈ ' + ms + ' ms — calage appliqué (ajuste au curseur si besoin).');
   },
 
   // Décompte de 4 temps (un bip par seconde) avant de lancer la capture,
@@ -1446,15 +1535,25 @@ const looper = {
     const g = ctx.createGain(); g.gain.value = 1;
     node.connect(g); g.connect(this.bus);
     node.start(when, startAt || 0);
-    this.layers.push({ node, gain:g, muted:false, data:float32 });
+    this.layers.push({ node, gain:g, muted:false, vol:1, data:float32 });
     this._renderLayers();
   },
 
+  _applyLayerGain(L){
+    L.gain.gain.setTargetAtTime(L.muted ? 0 : L.vol, audio.ctx.currentTime, 0.02);
+  },
   toggleMute(i){
     const L = this.layers[i]; if(!L) return;
     L.muted = !L.muted;
-    L.gain.gain.setTargetAtTime(L.muted ? 0 : 1, audio.ctx.currentTime, 0.02);
+    this._applyLayerGain(L);
     this._renderLayers();
+  },
+  setLayerVol(i, v){
+    const L = this.layers[i]; if(!L) return;
+    L.vol = v;
+    this._applyLayerGain(L);
+    const badge = document.querySelector('#lpLayers .lp-layer[data-i="' + i + '"] .lvlval');
+    if(badge) badge.textContent = Math.round(v * 100) + '%';
   },
   removeLast(){
     const L = this.layers.pop();
@@ -1494,6 +1593,7 @@ const looper = {
       (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
       const node = ctx.createBufferSource();
       node.buffer = ab; node.loop = true; node.loopStart = 0; node.loopEnd = this.loopLen;
+      L.gain.gain.value = L.muted ? 0 : (L.vol == null ? 1 : L.vol);
       node.connect(L.gain);
       node.start(when, 0);
       L.node = node;
@@ -1522,11 +1622,16 @@ const looper = {
   _renderLayers(){
     const host = document.getElementById('lpLayers');
     host.innerHTML = this.layers.map((L,i)=>
-      `<div class="lp-layer ${L.muted ? 'muted' : ''}">
-        <span class="nm">Couche ${i+1}</span>
-        <button data-i="${i}" class="${L.muted ? '' : 'on'}">${L.muted ? 'Muet' : 'Son'}</button>
+      `<div class="lp-layer ${L.muted ? 'muted' : ''}" data-i="${i}">
+        <span class="nm">C${i+1}</span>
+        <input type="range" class="lvl" data-i="${i}" min="0" max="1.3" step="0.02" value="${L.vol}" aria-label="Volume couche ${i+1}">
+        <span class="lvlval">${Math.round(L.vol*100)}%</span>
+        <button class="mute" data-i="${i}" aria-label="${L.muted ? 'Réactiver' : 'Couper'} la couche ${i+1}">${L.muted ? '🔇' : '🔊'}</button>
       </div>`).join('');
-    host.querySelectorAll('button').forEach(b=>{
+    host.querySelectorAll('input.lvl').forEach(inp=>{
+      inp.addEventListener('input', ()=> this.setLayerVol(parseInt(inp.dataset.i, 10), parseFloat(inp.value)));
+    });
+    host.querySelectorAll('button.mute').forEach(b=>{
       b.addEventListener('click', ()=> this.toggleMute(parseInt(b.dataset.i, 10)));
     });
   },
@@ -1608,7 +1713,9 @@ const looper = {
       (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
       const n = off.createBufferSource();
       n.buffer = ab; n.loop = true; n.loopStart = 0; n.loopEnd = this.loopLen;
-      n.connect(sink);
+      const lg = off.createGain();
+      lg.gain.value = (L.vol == null ? 1 : L.vol);   // volume de couche « cuit » dans le mix
+      n.connect(lg); lg.connect(sink);
       n.start(0, 0);   // couches recalées sur la phase 0 → départ commun
     }
     if(!any) return null;
@@ -1876,6 +1983,7 @@ document.getElementById('lpCal').addEventListener('input', e=>{
   looper.latencyComp = parseInt(e.target.value,10) / 1000;
   document.getElementById('lpCalVal').textContent = e.target.value + ' ms';
 });
+document.getElementById('lpCalAuto').addEventListener('click', ()=>looper.calibrate());
 (function(){
   const lpFx = document.getElementById('lpFx');
   document.getElementById('lpFxToggle').addEventListener('click', e=>{
