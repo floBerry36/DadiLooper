@@ -118,12 +118,16 @@
   }
 
   /* dial */
-  .dial-holder{flex:0 0 auto;}
+  .dial-holder{flex:0 0 auto;width:260px;max-width:100%;}
   .dial-caption{
     text-align:center;font-size:11px;letter-spacing:0.1em;color:var(--ink-soft);
     margin-top:6px;font-weight:600;
   }
-  svg.dial{display:block;}
+  /* « Nature de l'accord » : bande pleine largeur, au-dessus de l'instrument */
+  .chord-nature{
+    margin-top:20px;padding-top:14px;border-top:1px solid rgba(42,35,24,0.16);
+  }
+  svg.dial{display:block;max-width:100%;height:auto;margin:0 auto;}
   .dial-note.outer{cursor:pointer;}
   .dial-note.inner{cursor:default;}
   .dial-note circle.hit{fill:transparent;}
@@ -279,6 +283,7 @@
     border:1px solid rgba(42,35,24,0.16);border-radius:10px;padding:13px 13px 15px;
     color:var(--ink);
   }
+  .window-panel > .looper:first-child{margin-top:0;}
   .looper h2{
     font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin:0 0 4px;color:var(--ink);
   }
@@ -368,16 +373,19 @@
   .lp-lib-note{font-weight:400;color:var(--ink-soft);}
   .lp-lib-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
   .lp-lib-list li{
-    display:flex;align-items:center;gap:8px;font-size:11.5px;
-    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);border-radius:7px;padding:5px 8px;
+    display:flex;flex-direction:column;gap:5px;font-size:11.5px;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.18);border-radius:7px;padding:6px 8px;
   }
+  .lp-lib-row1{display:flex;align-items:baseline;gap:8px;}
+  .lp-lib-row2{display:flex;flex-wrap:wrap;gap:5px;}
   .lp-lib-list .nm{flex:1;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .lp-lib-list .meta{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;font-size:9.5px;}
+  .lp-lib-list .meta{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;font-size:9.5px;flex:0 0 auto;}
   .lp-lib-list button{
-    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;background:transparent;
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;background:transparent;
     border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:6px;padding:3px 8px;cursor:pointer;
   }
   .lp-lib-list button.load{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
+  .lp-lib-list button.del{color:var(--oxblood);border-color:rgba(143,50,41,0.4);}
   .lp-lib-empty{font-size:10.5px;color:var(--ink-soft);}
 
   footer{margin-top:34px;font-size:11.5px;color:#7c8b87;line-height:1.7;max-width:640px;}
@@ -430,9 +438,6 @@
       </div>
 
       <div class="window-panel">
-        <div class="window-title" id="windowTitle">NATURE DE L'ACCORD</div>
-        <div class="chip-grid" id="qualityChips"></div>
-
         <div class="looper" id="looper">
           <h2>Looper — micro</h2>
           <p class="hint" id="lpHint">
@@ -450,7 +455,7 @@
               <span class="lp-status" id="lpStatus"></span>
             </div>
             <div class="row lp-center">
-              <button class="lp-btn lp-ghost" id="lpPlayBtn" type="button" hidden>Pause</button>
+              <button class="lp-btn lp-ghost" id="lpPlayBtn" type="button" hidden>■ Stop</button>
               <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" hidden>Annuler la dernière</button>
               <button class="lp-btn lp-ghost" id="lpClearBtn" type="button" hidden>Tout effacer</button>
             </div>
@@ -505,6 +510,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="chord-nature">
+      <div class="window-title" id="windowTitle">NATURE DE L'ACCORD</div>
+      <div class="chip-grid" id="qualityChips"></div>
     </div>
 
     <div class="instrument-wrap">
@@ -1178,6 +1188,7 @@ function fxBuild(ctx, fx){
 const looper = {
   stream:null, src:null, proc:null, sink:null, bus:null,
   fx:null, _fxNodes:null,
+  _stopped:false,
   layers:[], loopSamples:0, loopLen:0, loop0:0,
   mode:'idle',                 // idle | countin | recFirst | playing | recOver | assembling
   chunks:[], recCount:0, recPhase:0, targetSamples:0,
@@ -1252,6 +1263,7 @@ const looper = {
       this._startCountIn('first');
     } else if(this.mode === 'playing'){
       if(!this.proc){ this._hint('Active d’abord le micro (bouton 🎤).'); return; }
+      if(this._stopped) this.playLoop();
       this._startCountIn('over');
     } else if(this.mode === 'countin'){
       this._cancelCountIn();
@@ -1359,14 +1371,21 @@ const looper = {
     const now = audio.ctx.currentTime;
     const phase = ((now - this.loop0) % this.loopLen + this.loopLen) % this.loopLen;
     const startPhase = ((this.recPhase - this.latencyComp) % this.loopLen + this.loopLen) % this.loopLen;
-    const offset = ((phase - startPhase) % this.loopLen + this.loopLen) % this.loopLen;
-    this._addLayer(data, now, offset);
+    // On recale le buffer pour que l'échantillon 0 corresponde à la phase 0 de la
+    // boucle : toutes les couches partagent alors la même origine, ce qui permet
+    // un vrai Stop / redémarrage propre et simplifie le mixage hors-ligne.
+    const S = ((Math.round(startPhase * audio.ctx.sampleRate)) % this.loopSamples + this.loopSamples) % this.loopSamples;
+    const aligned = new Float32Array(this.loopSamples);
+    for(let k=0;k<this.loopSamples;k++){
+      aligned[k] = data[((k - S) % this.loopSamples + this.loopSamples) % this.loopSamples];
+    }
+    this._addLayer(aligned, now, phase);
     this.mode = 'playing';
     this._status('Couche ' + this.layers.length + ' ajoutée');
     this._syncBtns();
   },
 
-  _addLayer(float32, when, offset){
+  _addLayer(float32, when, startAt){
     const ctx = audio.ctx;
     const ab = ctx.createBuffer(1, float32.length, ctx.sampleRate);
     if(ab.copyToChannel) ab.copyToChannel(float32, 0);
@@ -1376,8 +1395,8 @@ const looper = {
     node.loopStart = 0; node.loopEnd = this.loopLen;
     const g = ctx.createGain(); g.gain.value = 1;
     node.connect(g); g.connect(this.bus);
-    node.start(when, offset || 0);
-    this.layers.push({ node, gain:g, muted:false, data:float32, offset:offset || 0 });
+    node.start(when, startAt || 0);
+    this.layers.push({ node, gain:g, muted:false, data:float32 });
     this._renderLayers();
   },
 
@@ -1389,32 +1408,60 @@ const looper = {
   },
   removeLast(){
     const L = this.layers.pop();
-    if(L){ try{ L.node.stop(); }catch(e){} }
+    if(L){ try{ L.node && L.node.stop(); }catch(e){} }
     if(!this.layers.length) this.clearAll();
     else { this._renderLayers(); this._syncBtns(); }
   },
   clearAll(){
     if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; }
     document.getElementById('lpMetro').hidden = true;
-    this.layers.forEach(L=>{ try{ L.node.stop(); }catch(e){} });
+    this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} });
     this.layers = []; this.loopLen = 0; this.loopSamples = 0; this.mode = 'idle';
-    if(this.bus) this.bus.gain.setTargetAtTime(1, audio.ctx.currentTime, 0.01);
+    this._stopped = false;
     document.getElementById('lpProgWrap').hidden = true;
     document.getElementById('lpPlayhead').style.width = '0%';
-    document.getElementById('lpPlayBtn').textContent = 'Pause';
     this._status(''); this._renderLayers(); this._syncBtns();
+  },
+
+  // Vrai Stop : on arrête les sources (silence immédiat, tête de lecture figée).
+  stopLoop(){
+    if(!this.layers.length || this._stopped) return;
+    this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} L.node = null; });
+    this._stopped = true;
+    document.getElementById('lpPlayhead').style.width = '0%';
+    this._status('Boucle arrêtée');
+    this._syncBtns();
+  },
+  // Relance toutes les couches en phase, depuis le début de la boucle.
+  playLoop(){
+    if(!this.layers.length || !this._stopped) return;
+    if(!this._ensureAudioOut()) return;
+    const ctx = audio.ctx;
+    const when = ctx.currentTime + 0.06;
+    this.loop0 = when;
+    this.layers.forEach(L=>{
+      const ab = ctx.createBuffer(1, L.data.length, ctx.sampleRate);
+      (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
+      const node = ctx.createBufferSource();
+      node.buffer = ab; node.loop = true; node.loopStart = 0; node.loopEnd = this.loopLen;
+      node.connect(L.gain);
+      node.start(when, 0);
+      L.node = node;
+    });
+    this._stopped = false;
+    if(this.mode !== 'playing') this.mode = 'playing';
+    this._status('');
+    this._syncBtns();
   },
   togglePlay(){
     if(!this.layers.length) return;
-    const turnOn = this.bus.gain.value < 0.5;
-    this.bus.gain.setTargetAtTime(turnOn ? 1 : 0, audio.ctx.currentTime, 0.01);
-    document.getElementById('lpPlayBtn').textContent = turnOn ? 'Pause' : 'Lecture';
+    if(this._stopped) this.playLoop(); else this.stopLoop();
   },
 
   _raf(){
     const ph = document.getElementById('lpPlayhead');
     const step = ()=>{
-      if(this.loopLen > 0){
+      if(this.loopLen > 0 && !this._stopped){
         const p = ((audio.ctx.currentTime - this.loop0) % this.loopLen) / this.loopLen;
         ph.style.width = (p * 100).toFixed(1) + '%';
       }
@@ -1449,7 +1496,8 @@ const looper = {
       this.mode === 'playing'  ? 'Enregistrer une couche' :
                                  'Lancer l’enregistrement');
     const has = this.layers.length > 0;
-    play.hidden = undo.hidden = clr.hidden = !has;
+    play.hidden = undo.hidden = clr.hidden = !has || busy;
+    play.textContent = this._stopped ? '▶ Lecture' : '■ Stop';
     document.getElementById('lpSaveRow').hidden = !has || busy;
   },
   _status(t){ document.getElementById('lpStatus').textContent = t; },
@@ -1512,7 +1560,7 @@ const looper = {
       const n = off.createBufferSource();
       n.buffer = ab; n.loop = true; n.loopStart = 0; n.loopEnd = this.loopLen;
       n.connect(sink);
-      n.start(0, L.offset || 0);
+      n.start(0, 0);   // couches recalées sur la phase 0 → départ commun
     }
     if(!any) return null;
     const rendered = await off.startRendering();
@@ -1538,16 +1586,17 @@ const looper = {
     return new Blob([buf], { type:'audio/wav' });
   },
 
-  async exportWav(){
-    if(!this.layers.length) return;
-    this._status('Préparation du fichier…');
-    const mix = await this._bounce();
-    if(!mix){ this._status('Rien à exporter (toutes les couches sont muettes).'); return; }
-    const blob = this._encodeWav(mix, audio.ctx.sampleRate);
-    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
-    const file = new File([blob], 'boucle-dadi-' + stamp + '.wav', { type:'audio/wav' });
+  _wavName(base){
+    const safe = (base || 'boucle-dadi')
+      .replace(/[^\p{L}\p{N} _-]/gu, '').trim().replace(/\s+/g, '-');
+    return (safe || 'boucle-dadi') + '.wav';
+  },
+  // Partage (feuille iOS) sinon téléchargement d'un Float32 encodé en WAV.
+  async _deliverWav(f32, sr, base){
+    const blob = this._encodeWav(f32, sr);
+    const file = new File([blob], this._wavName(base), { type:'audio/wav' });
     if(navigator.canShare && navigator.canShare({ files:[file] })){
-      try{ await navigator.share({ files:[file], title:'Boucle DadiLooper' }); this._status('Fichier partagé.'); return; }
+      try{ await navigator.share({ files:[file], title: file.name }); this._status('Fichier partagé.'); return; }
       catch(e){ if(e && e.name === 'AbortError'){ this._status(''); return; } }
     }
     const url = URL.createObjectURL(blob);
@@ -1555,7 +1604,16 @@ const looper = {
     a.href = url; a.download = file.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 4000);
-    this._status('Fichier .wav téléchargé.');
+    this._status('Fichier « ' + file.name + ' » téléchargé.');
+  },
+
+  async exportWav(){
+    if(!this.layers.length) return;
+    this._status('Préparation du fichier…');
+    const mix = await this._bounce();
+    if(!mix){ this._status('Rien à exporter (toutes les couches sont muettes).'); return; }
+    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    await this._deliverWav(mix, audio.ctx.sampleRate, 'boucle-dadi-' + stamp);
   },
 
   /* --- Bibliothèque locale (IndexedDB) --- */
@@ -1594,6 +1652,22 @@ const looper = {
       t.oncomplete = ()=> res();
       t.onerror   = ()=> rej(t.error);
     });
+  },
+  async _libRename(id){
+    const rec = (await this._libAll()).find(x=> x.id === id);
+    if(!rec) return;
+    const name = (window.prompt('Nouveau nom :', rec.name) || '').trim();
+    if(!name || name === rec.name) return;
+    rec.name = name;
+    await this._libPut(rec);
+    this._renderLib();
+    this._status('Renommé en « ' + name + ' ».');
+  },
+  async _libExport(id){
+    const rec = (await this._libAll()).find(x=> x.id === id);
+    if(!rec || !rec.data) return;
+    this._status('Préparation du fichier…');
+    await this._deliverWav(rec.data, rec.sampleRate || 44100, rec.name);
   },
 
   async saveLoop(){
@@ -1639,9 +1713,9 @@ const looper = {
     this.mode = 'playing';
     if(this.bus) this.bus.gain.setTargetAtTime(1, audio.ctx.currentTime, 0.01);
     this._addLayer(data, this.loop0, 0);
+    this._stopped = false;
     document.getElementById('lpMain').hidden = false;
     document.getElementById('lpProgWrap').hidden = false;
-    document.getElementById('lpPlayBtn').textContent = 'Pause';
     this._revealFx();
     this._status('Chargé : ' + rec.name + ' (' + this.loopLen.toFixed(2) + ' s)');
     this._syncBtns();
@@ -1663,25 +1737,31 @@ const looper = {
       const meta = (r.loopLen ? r.loopLen.toFixed(1) + ' s · ' : '') +
         d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
       return `<li>
-        <span class="nm">${r.name.replace(/[<>&]/g,'')}</span>
-        <span class="meta">${meta}</span>
-        <button class="load" data-id="${r.id}">Charger</button>
-        <button class="del" data-id="${r.id}">Suppr.</button>
+        <div class="lp-lib-row1">
+          <span class="nm">${r.name.replace(/[<>&]/g,'')}</span>
+          <span class="meta">${meta}</span>
+        </div>
+        <div class="lp-lib-row2">
+          <button class="load" data-id="${r.id}">Charger</button>
+          <button class="ren"  data-id="${r.id}">Renommer</button>
+          <button class="exp"  data-id="${r.id}">Exporter</button>
+          <button class="del"  data-id="${r.id}">Suppr.</button>
+        </div>
       </li>`;
     }).join('');
-    host.querySelectorAll('button.load').forEach(b=>{
-      b.addEventListener('click', async ()=>{
-        const all = await this._libAll();
-        const rec = all.find(x=> x.id === Number(b.dataset.id));
-        if(rec) this._loadRec(rec);
-      });
+    const bind = (sel, fn)=> host.querySelectorAll(sel).forEach(b=>{
+      b.addEventListener('click', ()=> fn.call(this, Number(b.dataset.id)));
     });
-    host.querySelectorAll('button.del').forEach(b=>{
-      b.addEventListener('click', async ()=>{
-        if(!window.confirm('Supprimer cette boucle ?')) return;
-        await this._libDel(Number(b.dataset.id));
-        this._renderLib();
-      });
+    bind('button.load', async id=>{
+      const rec = (await this._libAll()).find(x=> x.id === id);
+      if(rec) this._loadRec(rec);
+    });
+    bind('button.ren', id=> this._libRename(id));
+    bind('button.exp', id=> this._libExport(id));
+    bind('button.del', async id=>{
+      if(!window.confirm('Supprimer cette boucle ?')) return;
+      await this._libDel(id);
+      this._renderLib();
     });
   },
 };
