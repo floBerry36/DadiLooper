@@ -156,14 +156,15 @@
   .dial-note.inner text{font-size:9.5px;font-weight:600;}
   .dial-note.outer:hover .dial-note-bg{fill:var(--brass-light);}
 
-  /* rôle harmonique — mêmes couleurs sur les deux cercles, seulement à ≤ 2 crans
-     de la fondamentale : fondamentale = rouge · tierce = bleu · quinte = jaune */
-  .dial-note.role-root  .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
-  .dial-note.role-third .dial-note-bg{fill:#33607e;stroke:#33607e;}
-  .dial-note.role-fifth .dial-note-bg{fill:#c99a3a;stroke:#c99a3a;}
-  .dial-note.role-root text, .dial-note.role-third text{fill:#fdf1ee;}
-  .dial-note.role-root text.dual tspan.alt, .dial-note.role-third text.dual tspan.alt{fill:#fdf1ee;opacity:0.85;}
-  .dial-note.role-fifth text{fill:var(--ink);}
+  /* rôle harmonique — cercle EXTÉRIEUR uniquement :
+     fondamentale = rouge · tierce = bleu · quinte = jaune · autre note du set = vert pâle */
+  .dial-note.outer.role-other .dial-note-bg{fill:rgba(61,108,92,0.20);stroke:rgba(61,108,92,0.5);}
+  .dial-note.outer.role-root  .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
+  .dial-note.outer.role-third .dial-note-bg{fill:#33607e;stroke:#33607e;}
+  .dial-note.outer.role-fifth .dial-note-bg{fill:#c99a3a;stroke:#c99a3a;}
+  .dial-note.outer.role-root text, .dial-note.outer.role-third text{fill:#fdf1ee;}
+  .dial-note.outer.role-root text.dual tspan.alt, .dial-note.outer.role-third text.dual tspan.alt{fill:#fdf1ee;opacity:0.85;}
+  .dial-note.outer.role-fifth text{fill:var(--ink);}
 
   /* fondamentale choisie : liseré sombre par-dessus la couleur de rôle */
   .dial-note.selected .dial-note-bg{stroke:var(--ink);stroke-width:2.5;}
@@ -587,9 +588,30 @@
   .center-pad .lp-pad-rec.armed{box-shadow:0 0 0 3px #17171b, inset 0 2px 4px rgba(255,255,255,0.4),
     0 0 20px 3px rgba(210,150,80,0.5) !important;}
   .center-pad .lp-pad-rec::before,.center-pad .lp-pad-rec::after{border-radius:50%;}
+  .rec-label{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:clamp(14px,2.4vw,22px);
+    letter-spacing:0.16em;color:rgba(255,235,230,0.5);pointer-events:none;
+  }
+  .lp-pad-rec.recording .rec-label,.lp-pad-rec.armed .rec-label{color:rgba(255,255,255,0.92);}
 
-  .dial-stage .lp-pad-play{
-    position:absolute;right:7%;top:5%;width:84px;height:56px;min-height:0 !important;z-index:4;border-radius:14px;
+  /* pad vert : grand triangle rectangle, hypoténuse côté roue, angle droit côté panneau */
+  .scr-wheel > .lp-pad-play{
+    position:absolute;top:6px;right:-10px;z-index:5;
+    width:172px;height:150px;min-height:0 !important;padding:0;border:none;border-radius:0;
+    background:linear-gradient(150deg,#6ee7a1 0%,#33bd75 48%,#1c8551 100%);
+    clip-path:polygon(100% 0, 100% 100%, 0 0);
+    box-shadow:none !important;
+    filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+  }
+  .scr-wheel > .lp-pad-play.playing{
+    background:linear-gradient(150deg,#8bf3b8 0%,#3ecf83 48%,#22995e 100%);
+    filter:drop-shadow(0 0 16px rgba(70,240,150,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+  }
+  .scr-wheel > .lp-pad-play::before,.scr-wheel > .lp-pad-play::after{display:none;}
+  .scr-wheel > .lp-pad-play .lp-pad-ico{
+    justify-content:flex-end;padding-right:22px;font-size:30px;color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,0.5);
   }
   .dial-stage .lp-metro{
     position:absolute;left:50%;top:2%;transform:translateX(-50%);margin:0;z-index:4;
@@ -693,12 +715,14 @@
         <svg class="dial" viewBox="0 0 300 300" id="dialSvg"></svg>
         <div class="lp-metro" id="lpMetro" hidden><span></span><span></span><span></span><span></span></div>
         <div class="center-pad">
-          <button class="lp-pad lp-pad-rec" id="lpRecBtn" type="button" aria-label="Enregistrer"></button>
+          <button class="lp-pad lp-pad-rec" id="lpRecBtn" type="button" aria-label="Enregistrer">
+            <span class="rec-label" aria-hidden="true">REC</span>
+          </button>
         </div>
-        <button class="lp-pad lp-pad-play" id="lpPlayBtn" type="button" aria-label="Lecture / Stop de la boucle" hidden>
-          <span class="lp-pad-ico" id="lpPlayIco" aria-hidden="true">▶</span>
-        </button>
       </div>
+      <button class="lp-pad lp-pad-play" id="lpPlayBtn" type="button" aria-label="Lecture / Stop de la boucle" hidden>
+        <span class="lp-pad-ico" id="lpPlayIco" aria-hidden="true">▶</span>
+      </button>
 
       <div class="wheel-legend">
         <span class="d-root">Fondamentale</span>
@@ -1012,15 +1036,11 @@ const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
 function drawDial(){
   const svg = document.getElementById('dialSvg');
   const cx=150, cy=150;
-  // Rôle harmonique (fondamentale / tierce / quinte), colorié seulement pour les
-  // notes situées à ≤ 2 crans de la fondamentale sur la roue.
-  const rootPos = pcToDialPos(state.root);
-  const posDist = p => { const d = ((p - rootPos)%12 + 12) % 12; return Math.min(d, 12 - d); };
-  const roleAt = (p, pc) => {
-    if(posDist(p) > 2) return '';
-    const r = noteRole(pc);
-    return (r === 'root' || r === 'third' || r === 'fifth') ? 'role-' + r : '';
-  };
+  // Coloration : SEUL le cercle EXTÉRIEUR (les 12 hauteurs, noms majeurs) est
+  // colorié par rôle — fondamentale rouge, tierce bleu, quinte jaune, autre note
+  // du set en vert pâle. Le cercle intérieur (relatifs mineurs) reste neutre :
+  // ce sont des tonalités, pas des degrés de l'accord.
+  const roleClass = pc => { const r = noteRole(pc); return r ? 'role-' + r : ''; };
 
   let deco = `<circle cx="${cx}" cy="${cy}" r="${DIAL.rOut+18}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>
     <circle cx="${cx}" cy="${cy}" r="${(DIAL.rOut+DIAL.rIn)/2}" fill="none" stroke="rgba(42,35,24,0.10)" stroke-width="1"/>`;
@@ -1036,7 +1056,7 @@ function drawDial(){
     const ox = cx + DIAL.rOut*co, oy = cy + DIAL.rOut*si;
     const ocls = ['dial-note','outer'];
     if(state.root===pcMaj) ocls.push('selected');
-    { const rr = roleAt(p, pcMaj); if(rr) ocls.push(rr); }
+    { const rr = roleClass(pcMaj); if(rr) ocls.push(rr); }
     const olabel = NOTE_SHARP[pcMaj]===NOTE_FLAT[pcMaj]
       ? `<text>${NOTE_SHARP[pcMaj]}</text>`
       : `<text class="dual"><tspan x="0" dy="-3">${NOTE_SHARP[pcMaj]}</tspan><tspan class="alt" x="0" dy="12">${NOTE_FLAT[pcMaj]}</tspan></text>`;
@@ -1044,11 +1064,9 @@ function drawDial(){
       <circle class="dial-note-bg" r="${DIAL.cOut}"></circle>
       <circle class="hit" r="${DIAL.cOut+3}"></circle>${olabel}</g>`;
 
-    // --- cercle intérieur : relatifs mineurs (référence, non cliquable) ---
+    // --- cercle intérieur : relatifs mineurs (référence seule, jamais colorié) ---
     const ix = cx + DIAL.rIn*co, iy = cy + DIAL.rIn*si;
-    const icls = ['dial-note','inner'];
-    { const rr = roleAt(p, pcMin); if(rr) icls.push(rr); }
-    ring += `<g class="${icls.join(' ')}" transform="translate(${ix},${iy})">
+    ring += `<g class="dial-note inner" transform="translate(${ix},${iy})">
       <circle class="dial-note-bg" r="${DIAL.cIn}"></circle>
       <text>${relMinorName(pcMaj)}m</text></g>`;
   }
