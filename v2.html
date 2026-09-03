@@ -690,10 +690,38 @@
   #screenAccords .chip{min-height:44px;font-size:13px;padding:9px 13px;}
   .acc-audio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 
-  /* accompagnement : suite d'accords en boucle */
+  /* accompagnement : suite d'accords en boucle + clavier d'accords de la tonalité */
   .prog{
     background:rgba(42,35,24,0.05);border:1px solid rgba(42,35,24,0.16);border-radius:10px;
-    padding:11px 12px;display:flex;flex-direction:column;gap:9px;
+    padding:11px 12px;display:flex;gap:14px;align-items:flex-start;
+  }
+  .prog-main{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0;}
+  .key-pad{
+    flex:0 0 208px;display:flex;flex-direction:column;gap:6px;
+    border-left:1px solid rgba(42,35,24,0.16);padding-left:12px;
+  }
+  .key-pad-title{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-soft);font-weight:600;}
+  .key-pad-title b{color:var(--ink);}
+  .key-pad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+  .kp-cell{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    min-height:46px;border-radius:9px;cursor:pointer;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.28);color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .kp-cell b{font-size:14px;font-weight:700;line-height:1;}
+  .kp-cell span{font-size:9px;opacity:0.75;}
+  .kp-cell.kp-empty{background:transparent;border:1px dashed rgba(42,35,24,0.18);cursor:default;}
+  .kp-cell.role-root{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
+  .kp-cell.role-third{background:#33607e;border-color:#33607e;color:#eef2f6;}
+  .kp-cell.role-fifth{background:#c99a3a;border-color:#c99a3a;color:var(--ink);}
+  .kp-cell.role-other{background:#3d6c5c;border-color:#2f5545;color:#eef6f0;}
+  .kp-cell:active{transform:translateY(1px);}
+  .key-pad-hint{font-size:8.5px;color:var(--ink-soft);font-style:italic;text-align:center;}
+  @media (max-width:720px){
+    .prog{flex-direction:column;}
+    .key-pad{flex:none;width:100%;border-left:none;border-top:1px solid rgba(42,35,24,0.16);padding-left:0;padding-top:10px;}
+    .key-pad-grid{max-width:280px;}
   }
   .prog-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
   .prog-title{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);letter-spacing:0.06em;}
@@ -918,26 +946,33 @@
     </div>
 
     <div class="prog">
-      <div class="prog-line">
-        <span class="prog-title">Accompagnement</span>
-        <button class="prog-add" id="progAdd" type="button">+ Ajouter l’accord</button>
-        <button class="prog-clr" id="progClear" type="button">Vider</button>
-      </div>
-      <div class="prog-seq" id="progSeq"></div>
-      <div class="prog-line">
-        <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
-        <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
-        <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
-        <span class="prog-lbl">temps / accord</span>
-        <div class="prog-beats" id="progBeats">
-          <button type="button" data-b="1">1</button>
-          <button type="button" data-b="2">2</button>
-          <button type="button" data-b="4" class="on">4</button>
-          <button type="button" data-b="8">8</button>
+      <div class="prog-main">
+        <div class="prog-line">
+          <span class="prog-title">Accompagnement</span>
+          <button class="prog-add" id="progAdd" type="button">+ Ajouter l’accord</button>
+          <button class="prog-clr" id="progClear" type="button">Vider</button>
         </div>
+        <div class="prog-seq" id="progSeq"></div>
+        <div class="prog-line">
+          <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
+          <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
+          <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
+          <span class="prog-lbl">temps / accord</span>
+          <div class="prog-beats" id="progBeats">
+            <button type="button" data-b="1">1</button>
+            <button type="button" data-b="2">2</button>
+            <button type="button" data-b="4" class="on">4</button>
+            <button type="button" data-b="8">8</button>
+          </div>
+        </div>
+        <button class="prog-play" id="progPlay" type="button" disabled>▶ Jouer en boucle</button>
+        <p class="prog-note">Mode Accord / Arpège et tempo = ceux ci-dessus. L’accompagnement continue si tu passes sur l’écran Looper — pour enregistrer une boucle par-dessus.</p>
       </div>
-      <button class="prog-play" id="progPlay" type="button" disabled>▶ Jouer en boucle</button>
-      <p class="prog-note">Le mode Accord / Arpège et le tempo sont ceux ci-dessus. L’accompagnement continue même si tu passes sur l’écran Looper — pratique pour enregistrer une boucle par-dessus.</p>
+      <div class="key-pad" id="keyPad">
+        <div class="key-pad-title">Accords de <b id="keyName">Do majeur</b></div>
+        <div class="key-pad-grid" id="keyPadGrid"></div>
+        <div class="key-pad-hint">Appuie pour ajouter à la suite</div>
+      </div>
     </div>
 
     <div class="windows-grid" id="windowsGrid"></div>
@@ -1112,33 +1147,38 @@ const FIFTHS_POS_TO_PC = Array.from({length:12}, (_,p)=> (p*7)%12);
 const pcToDialPos = pc => (((pc%12)+12)%12 * 7) % 12;   // 7 est son propre inverse mod 12
 const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
 
+// ---- Accords diatoniques de la tonalité choisie ----
+// Les 6 accords qui « ne sonnent pas faux » (le vii° diminué est laissé de côté).
+//   I → rouge · iii → bleu · V → jaune · IV / ii / vi → vert.
+// Utilisé par la roue ET par le clavier d'accords rectangulaire.
+function keyDiatonic(){
+  const minor = state.face === 'chords'
+    ? ['min','m6','m7','m7b5','dim','dim7'].includes(state.chordType)
+    : (function(){ const d = SCALES.find(s=>s.id===state.scaleType).degrees; return d.includes(3) && !d.includes(4); })();
+  const degs = state.face === 'scales' && SCALES.find(s=>s.id===state.scaleType).degrees.length === 7
+    ? SCALES.find(s=>s.id===state.scaleType).degrees
+    : (minor ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11]);
+  const roleByDeg = { 0:'role-root', 2:'role-third', 4:'role-fifth' };
+  const chords = [];
+  for(let i=0;i<7;i++){
+    if(i === 6) continue;                                   // vii° laissé de côté
+    const r  = ((state.root + degs[i]) % 12 + 12) % 12;
+    const iv3 = ((degs[(i+2)%7] - degs[i]) % 12 + 12) % 12;
+    const iv5 = ((degs[(i+4)%7] - degs[i]) % 12 + 12) % 12;
+    if(iv5 === 6) continue;                                 // diminué : pas de place
+    chords.push({ root:r, type: iv3 === 3 ? 'min' : 'maj', role: roleByDeg[i] || 'role-other', deg:i });
+  }
+  return { minor, chords };
+}
+
 function drawDial(){
   const svg = document.getElementById('dialSvg');
   const cx=150, cy=150;
 
-  // ---- Accords diatoniques de la tonalité choisie ----
-  // La roue met en avant les 6 accords qui « ne sonnent pas faux » dans la
-  // tonalité (le vii° diminué est laissé de côté volontairement) :
-  //   extérieur = accords MAJEURS (IV · I · V) · intérieur = accords MINEURS (ii · vi · iii)
-  //   I   → rouge (tonique)   iii → bleu (médiante, cercle intérieur)
-  //   V   → jaune (dominante)  IV / ii / vi → vert (diatoniques « safe »)
-  // Tout le reste de la roue est atténué.
-  const _minorKey = state.face === 'chords'
-    ? ['min','m6','m7','m7b5','dim','dim7'].includes(state.chordType)
-    : (function(){ const d = SCALES.find(s=>s.id===state.scaleType).degrees; return d.includes(3) && !d.includes(4); })();
-  const _degs = state.face === 'scales' && SCALES.find(s=>s.id===state.scaleType).degrees.length === 7
-    ? SCALES.find(s=>s.id===state.scaleType).degrees
-    : (_minorKey ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11]);
-  const roleByDeg = { 0:'role-root', 2:'role-third', 4:'role-fifth' };
+  const _kd = keyDiatonic();
+  const _minorKey = _kd.minor;
   const pick = {};   // "maj:<pc>" | "min:<pc>" -> classe de rôle
-  for(let i=0;i<7;i++){
-    if(i === 6) continue;                                   // vii° laissé de côté
-    const r  = ((state.root + _degs[i]) % 12 + 12) % 12;
-    const iv3 = ((_degs[(i+2)%7] - _degs[i]) % 12 + 12) % 12;
-    const iv5 = ((_degs[(i+4)%7] - _degs[i]) % 12 + 12) % 12;
-    if(iv5 === 6) continue;                                 // accord diminué : pas de place sur la roue
-    pick[(iv3 === 3 ? 'min' : 'maj') + ':' + r] = roleByDeg[i] || 'role-other';
-  }
+  _kd.chords.forEach(c => { pick[c.type + ':' + c.root] = c.role; });
 
   let deco = `<circle cx="${cx}" cy="${cy}" r="${DIAL.rOut+18}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>
     <circle cx="${cx}" cy="${cy}" r="${(DIAL.rOut+DIAL.rIn)/2}" fill="none" stroke="rgba(42,35,24,0.10)" stroke-width="1"/>`;
@@ -1204,6 +1244,41 @@ function drawDial(){
       if(state.face === 'chords') state.chordType = el.dataset.min ? 'min' : 'maj';
       render();
       audio.play(currentVoicing(), state.playMode);
+    });
+  });
+}
+
+/* ---------------- CLAVIER D'ACCORDS DE LA TONALITÉ (rectangle) ---------------- */
+// Reprend le principe du cycle des quintes en 2×3 : rangée du haut IV·I·V,
+// rangée du bas ii·vi·iii (relatif mineur sous son majeur). Un appui ajoute
+// l'accord à l'accompagnement et le joue.
+function renderKeyPad(){
+  const grid = document.getElementById('keyPadGrid');
+  if(!grid) return;
+  const kd = keyDiatonic();
+  const nm = document.getElementById('keyName');
+  if(nm) nm.textContent = noteName(state.root) + (kd.minor ? ' mineur' : ' majeur');
+  const byDeg = {};
+  kd.chords.forEach(c => { byDeg[c.deg] = c; });
+  const order = [3,0,4, 1,5,2];                 // IV I V / ii vi iii
+  const rnBase = ['I','II','III','IV','V','VI'];
+  grid.innerHTML = order.map(deg=>{
+    const c = byDeg[deg];
+    if(!c) return '<span class="kp-cell kp-empty"></span>';
+    const sym = c.type === 'min' ? 'm' : '';
+    const rn = c.type === 'maj' ? rnBase[deg] : rnBase[deg].toLowerCase();
+    return `<button class="kp-cell ${c.role}" data-root="${c.root}" data-type="${c.type}">
+      <b>${noteName(c.root)}${sym}</b><span>${rn}</span></button>`;
+  }).join('');
+  grid.querySelectorAll('.kp-cell[data-root]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const root = parseInt(b.dataset.root, 10), type = b.dataset.type;
+      prog.addChord(root, type);
+      if(!state.muted){
+        const iv = CHORD_TYPES.find(x=>x.id===type).intervals;
+        audio.stop();
+        iv.forEach((n,i)=> audio.voice(audio.midiFreq(52 + root + n), audio.now + 0.03 + i*0.02, 1.4, 0.22));
+      }
     });
   });
 }
@@ -1539,10 +1614,13 @@ const prog = {
   chords: [], playing: false, beatsPerChord: 4,
   _timer: null, _nextT: 0, _idx: 0,
 
+  addChord(root, type){
+    this.chords.push({ root, type });
+    this._render();
+  },
   add(){
     if(state.face !== 'chords'){ return; }
-    this.chords.push({ root: state.root, type: state.chordType });
-    this._render();
+    this.addChord(state.root, state.chordType);
   },
   removeAt(i){ this.chords.splice(i, 1); if(!this.chords.length) this.stop(); this._render(); },
   clear(){ this.chords = []; this.stop(); this._render(); },
@@ -2686,12 +2764,13 @@ document.getElementById('progBeats').addEventListener('click', e=>{
 document.getElementById('progBpmVal').textContent = looper.metro.bpm;
 prog._render();
 
-// M/m reflète l'accord courant ; appelé après chaque render.
+// M/m + clavier d'accords rafraîchis après chaque render.
 const _renderBase = render;
 render = function(){
   _renderBase();
   const mm = document.getElementById('mmToggle');
   if(mm) mm.classList.toggle('minor', state.face === 'chords' && MINOR_QUAL.has(state.chordType));
+  renderKeyPad();
 };
 
 setMutedUI();
