@@ -568,16 +568,6 @@
     flex:1 1 58%;position:relative;display:flex;flex-direction:column;align-items:center;
     justify-content:center;min-width:0;padding-bottom:64px;
   }
-  .mm-toggle{
-    position:absolute;top:0;left:0;z-index:4;
-    font-family:'Fraunces',serif;font-size:16px;font-weight:700;
-    width:54px;height:46px;border-radius:11px;cursor:pointer;
-    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);
-  }
-  .mm-toggle span{color:var(--ink-soft);}
-  .mm-toggle.minor{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
-  .mm-toggle.minor span{color:rgba(251,238,233,0.8);}
-
   .dial-stage{position:relative;width:100%;max-width:520px;aspect-ratio:1/1;margin:0 auto;}
   .dial-stage .dial{width:100%;height:100%;display:block;overflow:visible;}
   #dialSvg .dial-center,#dialSvg .dial-center-text,#dialSvg .dial-center-sub{display:none;}
@@ -787,8 +777,6 @@
   <!-- ================= ÉCRAN 1 · LOOPER ================= -->
   <section class="screen" id="screenLooper">
     <div class="scr-wheel">
-      <button class="mm-toggle" id="mmToggle" type="button" aria-label="Majeur / mineur">M<span>/m</span></button>
-
       <div class="dial-stage" id="dialStage">
         <svg class="dial" viewBox="0 0 300 300" id="dialSvg"></svg>
         <div class="lp-metro" id="lpMetro" hidden><span></span><span></span><span></span><span></span></div>
@@ -2730,19 +2718,10 @@ document.getElementById('lpBeatsSel').addEventListener('click', e=>{
 })();
 looper._renderLib();
 
-/* ============ V2 : navigation, M/m, tiroir ============ */
-const MINOR_QUAL = new Set(['min','m6','m7','m7b5','dim','dim7']);
+/* ============ V2 : navigation, tiroir ============ */
 const app = document.getElementById('app');
 document.getElementById('navToAccords').addEventListener('click', ()=>{ app.dataset.screen = 'accords'; });
 document.getElementById('navToLooper').addEventListener('click', ()=>{ app.dataset.screen = 'looper'; });
-
-document.getElementById('mmToggle').addEventListener('click', ()=>{
-  state.face = 'chords';
-  state.chordType = MINOR_QUAL.has(state.chordType) ? 'maj' : 'min';
-  document.querySelectorAll('.tab').forEach(x=> x.classList.toggle('active', x.dataset.face === 'chords'));
-  render();
-  audio.play(currentVoicing(), state.playMode);
-});
 
 document.getElementById('drawerToggle').addEventListener('click', e=>{
   const b = document.getElementById('drawerBody');
@@ -2764,12 +2743,10 @@ document.getElementById('progBeats').addEventListener('click', e=>{
 document.getElementById('progBpmVal').textContent = looper.metro.bpm;
 prog._render();
 
-// M/m + clavier d'accords rafraîchis après chaque render.
+// Clavier d'accords de la tonalité rafraîchi après chaque render.
 const _renderBase = render;
 render = function(){
   _renderBase();
-  const mm = document.getElementById('mmToggle');
-  if(mm) mm.classList.toggle('minor', state.face === 'chords' && MINOR_QUAL.has(state.chordType));
   renderKeyPad();
 };
 
