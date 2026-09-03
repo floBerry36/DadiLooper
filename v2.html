@@ -562,11 +562,19 @@
   #app[data-screen="accords"] #screenAccords{display:flex;}
   #screenLooper{flex-direction:row;gap:16px;align-items:stretch;overflow:hidden;}
   #screenAccords{flex-direction:column;gap:10px;overflow:hidden;}
+  /* la guitare / le clavier en grand, pleine largeur, au-dessus des deux colonnes */
+  #screenAccords .instrument-wrap{flex:0 0 auto;margin:0;}
+  #screenAccords .instrument-wrap .fretboard{width:100%;height:auto;max-height:34vh;margin:0 auto;display:block;}
   .acc-body{flex:1;min-height:0;display:flex;gap:16px;align-items:stretch;}
   .acc-col{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
   .acc-col-r .prog{flex-direction:column;}
   .acc-col-r .key-pad{flex:none;width:100%;border-left:none;border-top:1px solid rgba(42,35,24,0.16);padding-left:0;padding-top:10px;}
   .acc-col-r .key-pad-grid{max-width:280px;}
+  #screenAccords .windows-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  #screenAccords .win{padding:9px 11px;}
+  #screenAccords .win h3{font-size:14px;margin:0 0 4px;}
+  #screenAccords .win p{font-size:11px;line-height:1.45;}
+  #screenAccords .win .fn{font-size:8.5px;margin-bottom:3px;}
 
   /* ---- écran looper : roue à gauche (hauteur fixe, ne bouge jamais) ---- */
   .scr-wheel{
@@ -934,10 +942,25 @@
       <div class="window-title" id="windowTitle">NATURE DE L'ACCORD</div>
     </div>
 
+    <div class="instrument-wrap">
+      <div class="inst-topline">
+        <div class="pill-select mini" id="instrumentSelect">
+          <button class="active" data-inst="guitar">Guitare</button>
+          <button data-inst="piano">Clavier</button>
+        </div>
+        <select class="tuning" id="tuningSelect">
+          <option value="standard">Standard (E A D G B E)</option>
+          <option value="dropd">Drop D</option>
+          <option value="dadgad">DADGAD</option>
+          <option value="openg">Open G</option>
+        </select>
+      </div>
+      <div id="instrumentHost"></div>
+    </div>
+
     <div class="acc-body">
      <div class="acc-col acc-col-l">
       <div class="chip-grid" id="qualityChips"></div>
-
       <div class="acc-audio">
         <div class="pill-select mini" id="playModeSelect">
           <button class="active" data-mode="chord">Accord</button>
@@ -948,56 +971,39 @@
         </button>
         <button class="mute-btn js-mute" id="muteBtn" type="button" aria-label="Couper le son">🔊</button>
       </div>
-
-      <div class="instrument-wrap">
-        <div class="inst-topline">
-          <div class="pill-select mini" id="instrumentSelect">
-            <button class="active" data-inst="guitar">Guitare</button>
-            <button data-inst="piano">Clavier</button>
-          </div>
-          <select class="tuning" id="tuningSelect">
-            <option value="standard">Standard (E A D G B E)</option>
-            <option value="dropd">Drop D</option>
-            <option value="dadgad">DADGAD</option>
-            <option value="openg">Open G</option>
-          </select>
-        </div>
-        <div id="instrumentHost"></div>
-      </div>
+      <div class="windows-grid" id="windowsGrid"></div>
      </div>
 
      <div class="acc-col acc-col-r">
-    <div class="prog">
-      <div class="prog-main">
-        <div class="prog-line">
-          <span class="prog-title">Accompagnement</span>
-          <button class="prog-add" id="progAdd" type="button">+ Ajouter l’accord</button>
-          <button class="prog-clr" id="progClear" type="button">Vider</button>
-        </div>
-        <div class="prog-seq" id="progSeq"></div>
-        <div class="prog-line">
-          <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
-          <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
-          <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
-          <span class="prog-lbl">temps / accord</span>
-          <div class="prog-beats" id="progBeats">
-            <button type="button" data-b="1">1</button>
-            <button type="button" data-b="2">2</button>
-            <button type="button" data-b="4" class="on">4</button>
-            <button type="button" data-b="8">8</button>
+      <div class="prog">
+        <div class="prog-main">
+          <div class="prog-line">
+            <span class="prog-title">Accompagnement</span>
+            <button class="prog-add" id="progAdd" type="button">+ Ajouter l’accord</button>
+            <button class="prog-clr" id="progClear" type="button">Vider</button>
           </div>
+          <div class="prog-seq" id="progSeq"></div>
+          <div class="prog-line">
+            <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
+            <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
+            <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
+            <span class="prog-lbl">temps / accord</span>
+            <div class="prog-beats" id="progBeats">
+              <button type="button" data-b="1">1</button>
+              <button type="button" data-b="2">2</button>
+              <button type="button" data-b="4" class="on">4</button>
+              <button type="button" data-b="8">8</button>
+            </div>
+          </div>
+          <button class="prog-play" id="progPlay" type="button" disabled>▶ Jouer en boucle</button>
+          <p class="prog-note">Mode Accord / Arpège et tempo = ceux ci-dessus. L’accompagnement continue sur l’écran Looper.</p>
         </div>
-        <button class="prog-play" id="progPlay" type="button" disabled>▶ Jouer en boucle</button>
-        <p class="prog-note">Mode Accord / Arpège et tempo = ceux ci-dessus. L’accompagnement continue si tu passes sur l’écran Looper — pour enregistrer une boucle par-dessus.</p>
+        <div class="key-pad" id="keyPad">
+          <div class="key-pad-title">Accords de <b id="keyName">Do majeur</b></div>
+          <div class="key-pad-grid" id="keyPadGrid"></div>
+          <div class="key-pad-hint">Appuie pour ajouter à la suite</div>
+        </div>
       </div>
-      <div class="key-pad" id="keyPad">
-        <div class="key-pad-title">Accords de <b id="keyName">Do majeur</b></div>
-        <div class="key-pad-grid" id="keyPadGrid"></div>
-        <div class="key-pad-hint">Appuie pour ajouter à la suite</div>
-      </div>
-    </div>
-
-    <div class="windows-grid" id="windowsGrid"></div>
      </div>
     </div>
 
