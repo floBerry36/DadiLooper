@@ -689,6 +689,46 @@
   #screenAccords .chip-grid{gap:8px;}
   #screenAccords .chip{min-height:44px;font-size:13px;padding:9px 13px;}
   .acc-audio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+  /* accompagnement : suite d'accords en boucle */
+  .prog{
+    background:rgba(42,35,24,0.05);border:1px solid rgba(42,35,24,0.16);border-radius:10px;
+    padding:11px 12px;display:flex;flex-direction:column;gap:9px;
+  }
+  .prog-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .prog-title{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ink);letter-spacing:0.06em;}
+  .prog-add,.prog-clr{
+    font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-height:40px;padding:8px 13px;
+    border-radius:8px;cursor:pointer;background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);
+  }
+  .prog-add{background:var(--teal);border-color:var(--teal);color:#eef6f0;}
+  .prog-seq{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;align-content:flex-start;}
+  .prog-empty{font-size:10.5px;color:var(--ink-soft);font-style:italic;align-self:center;}
+  .prog-chip{
+    font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+    min-height:44px;padding:6px 10px;border-radius:9px;cursor:pointer;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .prog-chip .x{font-size:11px;color:var(--ink-soft);}
+  .prog-chip.now{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;transform:scale(1.06);}
+  .prog-chip.now .x{color:rgba(251,238,233,0.7);}
+  .prog-bpm{font-size:12px;color:var(--ink-soft);}
+  .prog-bpm b{font-size:16px;color:var(--ink);font-family:'JetBrains Mono',monospace;}
+  .prog-lbl{font-size:10px;color:var(--ink-soft);margin-left:6px;}
+  .prog-beats{display:flex;gap:5px;}
+  .prog-beats button{
+    font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;min-width:40px;min-height:40px;
+    cursor:pointer;background:var(--panel-dark);border:1px solid rgba(42,35,24,0.3);color:var(--ink);border-radius:8px;
+  }
+  .prog-beats button.on{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
+  .prog-play{
+    font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;min-height:48px;
+    border-radius:10px;cursor:pointer;background:#3d6c5c;border:1px solid #2f5545;color:#eef6f0;
+  }
+  .prog-play.on{background:var(--oxblood);border-color:var(--oxblood);}
+  .prog-play:disabled{opacity:0.5;cursor:default;}
+  .prog-note{font-size:9.5px;color:var(--ink-soft);font-style:italic;margin:0;line-height:1.5;}
   #screenAccords .windows-grid{margin-top:0;}
   #screenAccords .instrument-wrap{margin-top:4px;}
   .acc-foot{
@@ -875,6 +915,29 @@
         <span class="tri"></span><span class="js-play-label" id="playBtnLabel">Écouter</span>
       </button>
       <button class="mute-btn js-mute" id="muteBtn" type="button" aria-label="Couper le son">🔊</button>
+    </div>
+
+    <div class="prog">
+      <div class="prog-line">
+        <span class="prog-title">Accompagnement</span>
+        <button class="prog-add" id="progAdd" type="button">+ Ajouter l’accord</button>
+        <button class="prog-clr" id="progClear" type="button">Vider</button>
+      </div>
+      <div class="prog-seq" id="progSeq"></div>
+      <div class="prog-line">
+        <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
+        <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
+        <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
+        <span class="prog-lbl">temps / accord</span>
+        <div class="prog-beats" id="progBeats">
+          <button type="button" data-b="1">1</button>
+          <button type="button" data-b="2">2</button>
+          <button type="button" data-b="4" class="on">4</button>
+          <button type="button" data-b="8">8</button>
+        </div>
+      </div>
+      <button class="prog-play" id="progPlay" type="button" disabled>▶ Jouer en boucle</button>
+      <p class="prog-note">Le mode Accord / Arpège et le tempo sont ceux ci-dessus. L’accompagnement continue même si tu passes sur l’écran Looper — pratique pour enregistrer une boucle par-dessus.</p>
     </div>
 
     <div class="windows-grid" id="windowsGrid"></div>
@@ -1462,9 +1525,105 @@ function currentVoicing(){
   return midis;
 }
 function playCurrent(){
+  if(prog.playing){ prog.stop(); return; }
   if(audio.isPlaying() || audio.voices.length){ audio.stop(); return; }
   audio.play(currentVoicing(), state.playMode);
 }
+
+/* ---------------- ACCOMPAGNEMENT : suite d'accords en boucle ---------------- */
+// Enchaîne les accords ajoutés, en boucle, au tempo du métronome du looper.
+// Chaque accord dure `beatsPerChord` temps. Mode Accord = plaqué / Arpège = motif
+// ascendant-descendant en croches. Indépendant : peut tourner pendant qu'on
+// enregistre une boucle sur l'autre écran.
+const prog = {
+  chords: [], playing: false, beatsPerChord: 4,
+  _timer: null, _nextT: 0, _idx: 0,
+
+  add(){
+    if(state.face !== 'chords'){ return; }
+    this.chords.push({ root: state.root, type: state.chordType });
+    this._render();
+  },
+  removeAt(i){ this.chords.splice(i, 1); if(!this.chords.length) this.stop(); this._render(); },
+  clear(){ this.chords = []; this.stop(); this._render(); },
+  toggle(){ this.playing ? this.stop() : this.start(); },
+
+  start(){
+    if(!this.chords.length) return;
+    audio.init(); audio.resume();
+    if(!audio.ctx) return;
+    audio.stop();
+    this.playing = true;
+    this._idx = 0;
+    this._nextT = audio.now + 0.15;
+    this._timer = setInterval(()=> this._sched(), 25);
+    this._syncUI();
+  },
+  stop(){
+    if(this._timer){ clearInterval(this._timer); this._timer = null; }
+    this.playing = false;
+    document.querySelectorAll('#progSeq .prog-chip.now').forEach(el=> el.classList.remove('now'));
+    this._syncUI();
+  },
+  _sched(){
+    const spb = 60 / looper.metro.bpm;
+    const dur = spb * this.beatsPerChord;
+    while(this._nextT < audio.now + 0.25){
+      const i = this._idx % this.chords.length;
+      this._playChord(this.chords[i], this._nextT, dur, spb);
+      this._flash(i, this._nextT);
+      this._nextT += dur;
+      this._idx++;
+    }
+  },
+  _playChord(c, t, dur, spb){
+    if(state.muted) return;
+    const ct = CHORD_TYPES.find(x=> x.id === c.type);
+    const midis = ct.intervals.map(iv => 52 + c.root + iv);
+    if(state.playMode === 'arp'){
+      const stepT = spb / 2;                                   // croche
+      const pat = midis.concat(midis.slice(0, -1).reverse());  // montée + descente
+      let n = 0;
+      for(let tt = t; tt < t + dur - 0.001; tt += stepT){
+        audio.voice(audio.midiFreq(pat[n % pat.length]), tt, stepT * 1.6, 0.24);
+        n++;
+      }
+    } else {
+      midis.forEach((m, i) => audio.voice(audio.midiFreq(m), t + i * 0.014, dur * 0.95, 0.16));
+    }
+  },
+  _flash(i, t){
+    const delay = Math.max(0, (t - audio.now) * 1000);
+    setTimeout(()=>{
+      if(!this.playing) return;
+      document.querySelectorAll('#progSeq .prog-chip').forEach((el, k)=> el.classList.toggle('now', k === i));
+    }, delay);
+  },
+  _render(){
+    const host = document.getElementById('progSeq');
+    if(!this.chords.length){
+      host.innerHTML = '<span class="prog-empty">Choisis un accord (roue ou pastilles) puis « + Ajouter ».</span>';
+    } else {
+      host.innerHTML = this.chords.map((c, i)=>{
+        const ct = CHORD_TYPES.find(x=> x.id === c.type);
+        return `<button class="prog-chip" data-i="${i}" title="Retirer">${noteName(c.root)}${ct.symbol}<span class="x">×</span></button>`;
+      }).join('');
+      host.querySelectorAll('.prog-chip').forEach(b=>{
+        b.addEventListener('click', ()=> this.removeAt(parseInt(b.dataset.i, 10)));
+      });
+    }
+    document.getElementById('progPlay').disabled = !this.chords.length;
+  },
+  _syncUI(){
+    const b = document.getElementById('progPlay');
+    b.classList.toggle('on', this.playing);
+    b.textContent = this.playing ? '■ Arrêter l’accompagnement' : '▶ Jouer en boucle';
+  },
+  setBeats(n){
+    this.beatsPerChord = n;
+    document.querySelectorAll('#progBeats button').forEach(x=> x.classList.toggle('on', +x.dataset.b === n));
+  },
+};
 
 /* ---------------- LOOPER ---------------- */
 // Boucle libre à couches multiples, capture micro seule.
@@ -1752,6 +1911,8 @@ const looper = {
   setBpm(v){
     this.metro.bpm = Math.max(40, Math.min(240, Math.round(v)));
     document.getElementById('lpBpmVal').textContent = this.metro.bpm;
+    const pv = document.getElementById('progBpmVal');
+    if(pv) pv.textContent = this.metro.bpm;
   },
   setBeats(n){
     this.metro.beats = n;
@@ -2512,6 +2673,18 @@ document.getElementById('drawerToggle').addEventListener('click', e=>{
   e.currentTarget.setAttribute('aria-expanded', String(open));
   e.currentTarget.textContent = open ? 'Métronome + effets ▾' : 'Métronome + effets ▸';
 });
+
+// ---- accompagnement ----
+document.getElementById('progAdd').addEventListener('click', ()=> prog.add());
+document.getElementById('progClear').addEventListener('click', ()=> prog.clear());
+document.getElementById('progPlay').addEventListener('click', ()=> prog.toggle());
+document.getElementById('progBpmDn').addEventListener('click', ()=> looper.setBpm(looper.metro.bpm - 2));
+document.getElementById('progBpmUp').addEventListener('click', ()=> looper.setBpm(looper.metro.bpm + 2));
+document.getElementById('progBeats').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(b) prog.setBeats(parseInt(b.dataset.b, 10));
+});
+document.getElementById('progBpmVal').textContent = looper.metro.bpm;
+prog._render();
 
 // M/m reflète l'accord courant ; appelé après chaque render.
 const _renderBase = render;
