@@ -749,10 +749,11 @@
   .prog-play:disabled{opacity:0.5;cursor:default;}
   .prog-note{font-size:9.5px;color:var(--ink-soft);font-style:italic;margin:0;line-height:1.5;}
   #screenAccords .windows-grid{margin-top:0;}
-  #screenAccords .instrument-wrap{margin-top:4px;}
+  #screenAccords .instrument-wrap{margin:2px 0;}
+  .inst-topline{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .acc-foot{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-    border-top:1px solid var(--line);padding-top:12px;margin-top:4px;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding-top:12px;margin-top:2px;
   }
   .foot-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   #screenAccords .tuning{
@@ -938,6 +939,22 @@
       <button class="mute-btn js-mute" id="muteBtn" type="button" aria-label="Couper le son">🔊</button>
     </div>
 
+    <div class="instrument-wrap">
+      <div class="inst-topline">
+        <div class="pill-select mini" id="instrumentSelect">
+          <button class="active" data-inst="guitar">Guitare</button>
+          <button data-inst="piano">Clavier</button>
+        </div>
+        <select class="tuning" id="tuningSelect">
+          <option value="standard">Standard (E A D G B E)</option>
+          <option value="dropd">Drop D</option>
+          <option value="dadgad">DADGAD</option>
+          <option value="openg">Open G</option>
+        </select>
+      </div>
+      <div id="instrumentHost"></div>
+    </div>
+
     <div class="prog">
       <div class="prog-main">
         <div class="prog-line">
@@ -970,22 +987,8 @@
 
     <div class="windows-grid" id="windowsGrid"></div>
 
-    <div class="instrument-wrap"><div id="instrumentHost"></div></div>
-
     <div class="acc-foot">
       <button class="nav-btn" id="navToLooper" type="button">◂ Looper</button>
-      <div class="foot-right">
-        <div class="pill-select mini" id="instrumentSelect">
-          <button class="active" data-inst="guitar">Guitare</button>
-          <button data-inst="piano">Clavier</button>
-        </div>
-        <select class="tuning" id="tuningSelect">
-          <option value="standard">Standard (E A D G B E)</option>
-          <option value="dropd">Drop D</option>
-          <option value="dadgad">DADGAD</option>
-          <option value="openg">Open G</option>
-        </select>
-      </div>
     </div>
   </section>
 
