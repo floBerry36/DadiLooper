@@ -303,10 +303,19 @@
     color:var(--ink);
   }
   .window-panel > .looper:first-child{margin-top:0;}
-  .looper h2{
-    font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin:0 0 4px;color:var(--ink);
+  .looper h2{margin:0 0 4px;}
+  .looper-h2{
+    font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--ink);
+    background:transparent;border:none;padding:4px 0;cursor:pointer;display:inline-flex;
+    align-items:center;gap:7px;
   }
-  .looper .hint{font-size:10.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 11px;}
+  .looper-h2 .lp-i{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    width:18px;height:18px;border-radius:50%;border:1px solid rgba(42,35,24,0.35);
+    color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;
+  }
+  .looper-h2[aria-expanded="true"] .lp-i{background:var(--ink);color:#fdf8ec;border-color:var(--ink);}
+  .looper .hint{font-size:11px;color:var(--ink-soft);line-height:1.5;margin:2px 0 11px;}
   .looper .hint b{color:var(--oxblood);}
   .looper .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
   .looper .row.lp-center{justify-content:center;}
@@ -576,8 +585,8 @@
 
       <div class="window-panel">
         <div class="looper" id="looper">
-          <h2>Looper — micro</h2>
-          <p class="hint" id="lpHint">
+          <h2><button class="looper-h2" id="lpTitle" type="button" aria-expanded="false" aria-controls="lpHint">Looper — micro <span class="lp-i" aria-hidden="true">i</span></button></h2>
+          <p class="hint" id="lpHint" hidden>
             Looper à couches multiples&nbsp;: la 1ʳᵉ prise fixe la longueur, les suivantes s'ajoutent par-dessus.
           </p>
           <div class="row lp-center">
@@ -1375,9 +1384,10 @@ const looper = {
   },
 
   async enableMic(){
-    if(!this._ensureAudioOut()){ this._hint('WebAudio indisponible sur ce navigateur.'); return; }
+    if(!this._ensureAudioOut()){ this._hint('WebAudio indisponible sur ce navigateur.'); this._hintShow(); return; }
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       this._hint('Accès micro impossible : la page doit être servie en HTTPS (ou http://localhost).');
+      this._hintShow();
       return;
     }
     try{
@@ -1386,6 +1396,7 @@ const looper = {
       });
     }catch(err){
       this._hint('Micro indisponible : ' + (err && err.name ? err.name : err) + '. Autorise le micro dans Réglages ▸ Safari.');
+      this._hintShow();
       return;
     }
     const ctx = audio.ctx;
@@ -1871,6 +1882,11 @@ const looper = {
   },
   _status(t){ document.getElementById('lpStatus').textContent = t; },
   _hint(t){ document.getElementById('lpHint').innerHTML = t; },
+  _hintShow(on = true){
+    document.getElementById('lpHint').hidden = !on;
+    document.getElementById('lpTitle').setAttribute('aria-expanded', String(on));
+  },
+  _hintToggle(){ this._hintShow(document.getElementById('lpHint').hidden); },
 
   /* --- Rack d'effets (UI) --- */
   _revealFx(){
@@ -2187,6 +2203,7 @@ document.getElementById('muteBtn').addEventListener('click',()=>{
 document.getElementById('diapasonSelect').addEventListener('change', e=>{
   state.diapason = parseInt(e.target.value,10);
 });
+document.getElementById('lpTitle').addEventListener('click', ()=>looper._hintToggle());
 document.getElementById('lpMicBtn').addEventListener('click', ()=>looper.enableMic());
 document.getElementById('lpRecBtn').addEventListener('click', ()=>looper.recordBtn());
 document.getElementById('lpPlayBtn').addEventListener('click', ()=>looper.togglePlay());
