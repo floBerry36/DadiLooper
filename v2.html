@@ -140,8 +140,8 @@
     margin-top:20px;padding-top:14px;border-top:1px solid rgba(42,35,24,0.16);
   }
   svg.dial{display:block;max-width:100%;height:auto;margin:0 auto;}
-  .dial-note.outer{cursor:pointer;}
-  .dial-note.inner{cursor:default;}
+  .dial-note.outer,.dial-note.inner{cursor:pointer;}
+  .dial-note.inner:hover .dial-note-bg{fill:var(--brass-light);}
   .dial-note circle.hit{fill:transparent;}
   .dial-note text{
     font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;
@@ -1099,8 +1099,9 @@ function drawDial(){
     icls.push(irole ? irole : 'dim');
     if(irole) icls.push('pick');
     if(irole === 'role-root') icls.push('selected');
-    ring += `<g class="${icls.join(' ')}" transform="translate(${ix},${iy})">
+    ring += `<g class="${icls.join(' ')}" data-note="${pcMin}" data-min="1" transform="translate(${ix},${iy})">
       <circle class="dial-note-bg" r="${DIAL.cIn}"></circle>
+      <circle class="hit" r="${DIAL.cIn+3}"></circle>
       <text>${relMinorName(pcMaj)}m</text></g>`;
   }
 
@@ -1123,11 +1124,14 @@ function drawDial(){
       stroke-dasharray="0 100" transform="rotate(-90 ${cx} ${cy})"></circle>`;
 
   svg.innerHTML = deco + prog + needle + ring + center;
-  svg.querySelectorAll('.dial-note.outer').forEach(el=>{
+  // Cliquer un accord de la roue le choisit comme tonique : cercle extérieur = clé
+  // majeure, cercle intérieur = clé mineure (sur la face Accords).
+  svg.querySelectorAll('.dial-note[data-note]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      state.root = parseInt(el.dataset.note,10);
-      audio.blip(state.root);
+      state.root = parseInt(el.dataset.note, 10);
+      if(state.face === 'chords') state.chordType = el.dataset.min ? 'min' : 'maj';
       render();
+      audio.play(currentVoicing(), state.playMode);
     });
   });
 }
