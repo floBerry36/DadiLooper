@@ -561,7 +561,12 @@
   #app[data-screen="looper"]  #screenLooper {display:flex;}
   #app[data-screen="accords"] #screenAccords{display:flex;}
   #screenLooper{flex-direction:row;gap:16px;align-items:stretch;overflow:hidden;}
-  #screenAccords{flex-direction:column;gap:12px;overflow-y:auto;}
+  #screenAccords{flex-direction:column;gap:10px;overflow:hidden;}
+  .acc-body{flex:1;min-height:0;display:flex;gap:16px;align-items:stretch;}
+  .acc-col{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+  .acc-col-r .prog{flex-direction:column;}
+  .acc-col-r .key-pad{flex:none;width:100%;border-left:none;border-top:1px solid rgba(42,35,24,0.16);padding-left:0;padding-top:10px;}
+  .acc-col-r .key-pad-grid{max-width:280px;}
 
   /* ---- écran looper : roue à gauche (hauteur fixe, ne bouge jamais) ---- */
   .scr-wheel{
@@ -774,6 +779,9 @@
     .scr-wheel .wheel-foot{position:static;margin-top:12px;}
     .scr-loop{max-width:none;min-height:0;border-left:none;border-top:1px solid rgba(42,35,24,0.16);padding-left:0;padding-top:12px;overflow:visible;}
     .dial-stage{max-width:380px;}
+    #screenAccords{overflow:visible;}
+    .acc-body{flex-direction:column;min-height:0;}
+    .acc-col{overflow:visible;min-height:0;}
   }
 </style>
 </head>
@@ -926,35 +934,39 @@
       <div class="window-title" id="windowTitle">NATURE DE L'ACCORD</div>
     </div>
 
-    <div class="chip-grid" id="qualityChips"></div>
+    <div class="acc-body">
+     <div class="acc-col acc-col-l">
+      <div class="chip-grid" id="qualityChips"></div>
 
-    <div class="acc-audio">
-      <div class="pill-select mini" id="playModeSelect">
-        <button class="active" data-mode="chord">Accord</button>
-        <button data-mode="arp">Arpège</button>
-      </div>
-      <button class="play-btn js-play" id="playBtn" type="button" aria-label="Écouter">
-        <span class="tri"></span><span class="js-play-label" id="playBtnLabel">Écouter</span>
-      </button>
-      <button class="mute-btn js-mute" id="muteBtn" type="button" aria-label="Couper le son">🔊</button>
-    </div>
-
-    <div class="instrument-wrap">
-      <div class="inst-topline">
-        <div class="pill-select mini" id="instrumentSelect">
-          <button class="active" data-inst="guitar">Guitare</button>
-          <button data-inst="piano">Clavier</button>
+      <div class="acc-audio">
+        <div class="pill-select mini" id="playModeSelect">
+          <button class="active" data-mode="chord">Accord</button>
+          <button data-mode="arp">Arpège</button>
         </div>
-        <select class="tuning" id="tuningSelect">
-          <option value="standard">Standard (E A D G B E)</option>
-          <option value="dropd">Drop D</option>
-          <option value="dadgad">DADGAD</option>
-          <option value="openg">Open G</option>
-        </select>
+        <button class="play-btn js-play" id="playBtn" type="button" aria-label="Écouter">
+          <span class="tri"></span><span class="js-play-label" id="playBtnLabel">Écouter</span>
+        </button>
+        <button class="mute-btn js-mute" id="muteBtn" type="button" aria-label="Couper le son">🔊</button>
       </div>
-      <div id="instrumentHost"></div>
-    </div>
 
+      <div class="instrument-wrap">
+        <div class="inst-topline">
+          <div class="pill-select mini" id="instrumentSelect">
+            <button class="active" data-inst="guitar">Guitare</button>
+            <button data-inst="piano">Clavier</button>
+          </div>
+          <select class="tuning" id="tuningSelect">
+            <option value="standard">Standard (E A D G B E)</option>
+            <option value="dropd">Drop D</option>
+            <option value="dadgad">DADGAD</option>
+            <option value="openg">Open G</option>
+          </select>
+        </div>
+        <div id="instrumentHost"></div>
+      </div>
+     </div>
+
+     <div class="acc-col acc-col-r">
     <div class="prog">
       <div class="prog-main">
         <div class="prog-line">
@@ -986,6 +998,8 @@
     </div>
 
     <div class="windows-grid" id="windowsGrid"></div>
+     </div>
+    </div>
 
     <div class="acc-foot">
       <button class="nav-btn" id="navToLooper" type="button">◂ Looper</button>
