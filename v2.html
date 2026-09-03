@@ -156,18 +156,25 @@
   .dial-note.inner text{font-size:9.5px;font-weight:600;}
   .dial-note.outer:hover .dial-note-bg{fill:var(--brass-light);}
 
-  /* rôle harmonique — cercle EXTÉRIEUR uniquement :
-     fondamentale = rouge · tierce = bleu · quinte = jaune · autre note du set = vert pâle */
-  .dial-note.outer.role-other .dial-note-bg{fill:rgba(61,108,92,0.20);stroke:rgba(61,108,92,0.5);}
-  .dial-note.outer.role-root  .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
-  .dial-note.outer.role-third .dial-note-bg{fill:#33607e;stroke:#33607e;}
-  .dial-note.outer.role-fifth .dial-note-bg{fill:#c99a3a;stroke:#c99a3a;}
-  .dial-note.outer.role-root text, .dial-note.outer.role-third text{fill:#fdf1ee;}
-  .dial-note.outer.role-root text.dual tspan.alt, .dial-note.outer.role-third text.dual tspan.alt{fill:#fdf1ee;opacity:0.85;}
-  .dial-note.outer.role-fifth text{fill:var(--ink);}
+  /* accords diatoniques mis en avant :
+     I = rouge · iii = bleu · V = jaune · IV/ii/vi = vert · hors tonalité = atténué */
+  .dial-note.role-other .dial-note-bg{fill:#3d6c5c;stroke:#2f5545;}
+  .dial-note.role-root  .dial-note-bg{fill:var(--oxblood);stroke:var(--oxblood);}
+  .dial-note.role-third .dial-note-bg{fill:#33607e;stroke:#33607e;}
+  .dial-note.role-fifth .dial-note-bg{fill:#c99a3a;stroke:#c99a3a;}
+  .dial-note.role-other text, .dial-note.role-root text, .dial-note.role-third text{fill:#fdf1ee;}
+  .dial-note.role-root text.dual tspan.alt, .dial-note.role-third text.dual tspan.alt{fill:#fdf1ee;opacity:0.85;}
+  .dial-note.role-fifth text{fill:var(--ink);}
+  .dial-note.pick .dial-note-bg{stroke-width:1.6;}
+  .dial-note.pick .hit{fill:transparent;}
+
+  /* hors tonalité : très atténué, la roue « pointe » vers le quartier */
+  .dial-note.dim{opacity:0.24;}
+  .dial-note.outer.dim{cursor:pointer;}
 
   /* fondamentale choisie : liseré sombre par-dessus la couleur de rôle */
-  .dial-note.selected .dial-note-bg{stroke:var(--ink);stroke-width:2.5;}
+  .dial-note.selected .dial-note-bg{stroke:var(--ink);stroke-width:2.6;}
+  .dial-note.selected.dim{opacity:0.6;}
 
   .dial-legend{
     display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
@@ -1036,11 +1043,30 @@ const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
 function drawDial(){
   const svg = document.getElementById('dialSvg');
   const cx=150, cy=150;
-  // Coloration : SEUL le cercle EXTÉRIEUR (les 12 hauteurs, noms majeurs) est
-  // colorié par rôle — fondamentale rouge, tierce bleu, quinte jaune, autre note
-  // du set en vert pâle. Le cercle intérieur (relatifs mineurs) reste neutre :
-  // ce sont des tonalités, pas des degrés de l'accord.
-  const roleClass = pc => { const r = noteRole(pc); return r ? 'role-' + r : ''; };
+
+  // ---- Accords diatoniques de la tonalité choisie ----
+  // La roue met en avant les 6 accords qui « ne sonnent pas faux » dans la
+  // tonalité (le vii° diminué est laissé de côté volontairement) :
+  //   extérieur = accords MAJEURS (IV · I · V) · intérieur = accords MINEURS (ii · vi · iii)
+  //   I   → rouge (tonique)   iii → bleu (médiante, cercle intérieur)
+  //   V   → jaune (dominante)  IV / ii / vi → vert (diatoniques « safe »)
+  // Tout le reste de la roue est atténué.
+  const _minorKey = state.face === 'chords'
+    ? ['min','m6','m7','m7b5','dim','dim7'].includes(state.chordType)
+    : (function(){ const d = SCALES.find(s=>s.id===state.scaleType).degrees; return d.includes(3) && !d.includes(4); })();
+  const _degs = state.face === 'scales' && SCALES.find(s=>s.id===state.scaleType).degrees.length === 7
+    ? SCALES.find(s=>s.id===state.scaleType).degrees
+    : (_minorKey ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11]);
+  const roleByDeg = { 0:'role-root', 2:'role-third', 4:'role-fifth' };
+  const pick = {};   // "maj:<pc>" | "min:<pc>" -> classe de rôle
+  for(let i=0;i<7;i++){
+    if(i === 6) continue;                                   // vii° laissé de côté
+    const r  = ((state.root + _degs[i]) % 12 + 12) % 12;
+    const iv3 = ((_degs[(i+2)%7] - _degs[i]) % 12 + 12) % 12;
+    const iv5 = ((_degs[(i+4)%7] - _degs[i]) % 12 + 12) % 12;
+    if(iv5 === 6) continue;                                 // accord diminué : pas de place sur la roue
+    pick[(iv3 === 3 ? 'min' : 'maj') + ':' + r] = roleByDeg[i] || 'role-other';
+  }
 
   let deco = `<circle cx="${cx}" cy="${cy}" r="${DIAL.rOut+18}" fill="none" stroke="rgba(42,35,24,0.12)" stroke-width="1"/>
     <circle cx="${cx}" cy="${cy}" r="${(DIAL.rOut+DIAL.rIn)/2}" fill="none" stroke="rgba(42,35,24,0.10)" stroke-width="1"/>`;
@@ -1052,11 +1078,13 @@ function drawDial(){
     const ang = (p*30 - 90) * Math.PI/180;
     const co = Math.cos(ang), si = Math.sin(ang);
 
-    // --- cercle extérieur : majeures ---
+    // --- cercle extérieur : accords majeurs ---
     const ox = cx + DIAL.rOut*co, oy = cy + DIAL.rOut*si;
     const ocls = ['dial-note','outer'];
-    if(state.root===pcMaj) ocls.push('selected');
-    { const rr = roleClass(pcMaj); if(rr) ocls.push(rr); }
+    const orole = pick['maj:' + pcMaj];
+    ocls.push(orole ? orole : 'dim');
+    if(orole) ocls.push('pick');
+    if(orole === 'role-root') ocls.push('selected');
     const olabel = NOTE_SHARP[pcMaj]===NOTE_FLAT[pcMaj]
       ? `<text>${NOTE_SHARP[pcMaj]}</text>`
       : `<text class="dual"><tspan x="0" dy="-3">${NOTE_SHARP[pcMaj]}</tspan><tspan class="alt" x="0" dy="12">${NOTE_FLAT[pcMaj]}</tspan></text>`;
@@ -1064,15 +1092,21 @@ function drawDial(){
       <circle class="dial-note-bg" r="${DIAL.cOut}"></circle>
       <circle class="hit" r="${DIAL.cOut+3}"></circle>${olabel}</g>`;
 
-    // --- cercle intérieur : relatifs mineurs (référence seule, jamais colorié) ---
+    // --- cercle intérieur : accords mineurs (relatifs) ---
     const ix = cx + DIAL.rIn*co, iy = cy + DIAL.rIn*si;
-    ring += `<g class="dial-note inner" transform="translate(${ix},${iy})">
+    const icls = ['dial-note','inner'];
+    const irole = pick['min:' + pcMin];
+    icls.push(irole ? irole : 'dim');
+    if(irole) icls.push('pick');
+    if(irole === 'role-root') icls.push('selected');
+    ring += `<g class="${icls.join(' ')}" transform="translate(${ix},${iy})">
       <circle class="dial-note-bg" r="${DIAL.cIn}"></circle>
       <text>${relMinorName(pcMaj)}m</text></g>`;
   }
 
-  const angle0 = (pcToDialPos(state.root)*30 - 90) * Math.PI/180;
-  const nr = DIAL.rOut - DIAL.cOut - 4;
+  const tonicPos = _minorKey ? pcToDialPos((state.root + 3) % 12) : pcToDialPos(state.root);
+  const angle0 = (tonicPos*30 - 90) * Math.PI/180;
+  const nr = (_minorKey ? DIAL.rIn - DIAL.cIn : DIAL.rOut - DIAL.cOut) - 4;
   const needle = `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${cx + nr*Math.cos(angle0)}" y2="${cy + nr*Math.sin(angle0)}"></line>`;
 
   const ct = CHORD_TYPES.find(c=>c.id===state.chordType);
