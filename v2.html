@@ -764,6 +764,22 @@
   #screenAccords .windows-grid{margin-top:0;}
   #screenAccords .instrument-wrap{margin:2px 0;}
   .inst-topline{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .root-sel-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .root-sel-lbl{font-size:10px;color:var(--ink-soft);font-weight:700;letter-spacing:0.06em;}
+  .root-sel{display:flex;gap:3px;flex-wrap:wrap;}
+  .root-sel .rs{
+    font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+    min-width:34px;min-height:36px;cursor:pointer;
+    background:var(--panel-dark);border:1px solid rgba(42,35,24,0.28);color:var(--ink);border-radius:7px;
+  }
+  .root-sel .rs.on{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
+  .key-ind{font-size:9.5px;color:var(--ink-soft);font-style:italic;}
+  .bpm-input{
+    font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--ink);
+    width:52px;text-align:center;background:var(--panel);border:1px solid rgba(42,35,24,0.3);
+    border-radius:6px;padding:4px 2px;-moz-appearance:textfield;
+  }
+  .bpm-input::-webkit-outer-spin-button,.bpm-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .acc-foot{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
     border-top:1px solid var(--line);padding-top:12px;margin-top:2px;
@@ -871,7 +887,7 @@
               <button class="lp-mbtn lp-mtoggle" id="lpMetroToggle" type="button" aria-pressed="false">🎵 Métronome</button>
               <div class="lp-bpm">
                 <button class="lp-mbtn" id="lpBpmDn" type="button" aria-label="Tempo moins">−</button>
-                <span class="lp-bpm-val"><b id="lpBpmVal">100</b> BPM</span>
+                <span class="lp-bpm-val"><input class="bpm-input js-bpm" id="lpBpmVal" type="number" inputmode="numeric" min="40" max="240" value="100"> BPM</span>
                 <button class="lp-mbtn" id="lpBpmUp" type="button" aria-label="Tempo plus">+</button>
               </div>
             </div>
@@ -943,6 +959,11 @@
     </div>
 
     <div class="instrument-wrap">
+      <div class="root-sel-line">
+        <span class="root-sel-lbl">Note</span>
+        <div class="root-sel" id="rootSel"></div>
+        <span class="key-ind" id="keyInd"></span>
+      </div>
       <div class="inst-topline">
         <div class="pill-select mini" id="instrumentSelect">
           <button class="active" data-inst="guitar">Guitare</button>
@@ -985,7 +1006,7 @@
           <div class="prog-seq" id="progSeq"></div>
           <div class="prog-line">
             <button class="lp-mbtn" id="progBpmDn" type="button" aria-label="Tempo moins">−</button>
-            <span class="prog-bpm"><b id="progBpmVal">100</b> BPM</span>
+            <span class="prog-bpm"><input class="bpm-input js-bpm" id="progBpmVal" type="number" inputmode="numeric" min="40" max="240" value="100"> BPM</span>
             <button class="lp-mbtn" id="progBpmUp" type="button" aria-label="Tempo plus">+</button>
             <span class="prog-lbl">temps / accord</span>
             <div class="prog-beats" id="progBeats">
@@ -1100,9 +1121,11 @@ let state = {
   face:'chords',       // chords | scales
   instrument:'guitar',
   tuning:'standard',
-  root:0,
+  root:0,              // note explorée (écran Accords)
   chordType:'maj',
   scaleType:'ionian',
+  key:0,               // tonalité de référence (roue / accompagnement)
+  keyMinor:false,
   playMode:'chord',    // chord | arp
   muted:false,
   diapason:440,        // fréquence du La3, en Hz
@@ -1163,22 +1186,20 @@ const FIFTHS_POS_TO_PC = Array.from({length:12}, (_,p)=> (p*7)%12);
 const pcToDialPos = pc => (((pc%12)+12)%12 * 7) % 12;   // 7 est son propre inverse mod 12
 const DIAL = { rOut:120, rIn:76, cOut:18, cIn:14.5, rCenter:41 };
 
-// ---- Accords diatoniques de la tonalité choisie ----
-// Les 6 accords qui « ne sonnent pas faux » (le vii° diminué est laissé de côté).
+// ---- Accords diatoniques de la TONALITÉ (state.key / state.keyMinor) ----
+// La roue et le clavier d'accords représentent la tonalité de référence — celle
+// choisie sur la roue et qui pilote l'accompagnement. C'est distinct de la note
+// explorée sur l'écran Accords (state.root), qui sert à visualiser une gamme /
+// un accord à jouer PAR-DESSUS cette tonalité.
 //   I → rouge · iii → bleu · V → jaune · IV / ii / vi → vert.
-// Utilisé par la roue ET par le clavier d'accords rectangulaire.
 function keyDiatonic(){
-  const minor = state.face === 'chords'
-    ? ['min','m6','m7','m7b5','dim','dim7'].includes(state.chordType)
-    : (function(){ const d = SCALES.find(s=>s.id===state.scaleType).degrees; return d.includes(3) && !d.includes(4); })();
-  const degs = state.face === 'scales' && SCALES.find(s=>s.id===state.scaleType).degrees.length === 7
-    ? SCALES.find(s=>s.id===state.scaleType).degrees
-    : (minor ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11]);
+  const minor = state.keyMinor;
+  const degs = minor ? [0,2,3,5,7,8,10] : [0,2,4,5,7,9,11];
   const roleByDeg = { 0:'role-root', 2:'role-third', 4:'role-fifth' };
   const chords = [];
   for(let i=0;i<7;i++){
     if(i === 6) continue;                                   // vii° laissé de côté
-    const r  = ((state.root + degs[i]) % 12 + 12) % 12;
+    const r  = ((state.key + degs[i]) % 12 + 12) % 12;
     const iv3 = ((degs[(i+2)%7] - degs[i]) % 12 + 12) % 12;
     const iv5 = ((degs[(i+4)%7] - degs[i]) % 12 + 12) % 12;
     if(iv5 === 6) continue;                                 // diminué : pas de place
@@ -1233,7 +1254,7 @@ function drawDial(){
       <text>${relMinorName(pcMaj)}m</text></g>`;
   }
 
-  const tonicPos = _minorKey ? pcToDialPos((state.root + 3) % 12) : pcToDialPos(state.root);
+  const tonicPos = _minorKey ? pcToDialPos((state.key + 3) % 12) : pcToDialPos(state.key);
   const angle0 = (tonicPos*30 - 90) * Math.PI/180;
   const nr = (_minorKey ? DIAL.rIn - DIAL.cIn : DIAL.rOut - DIAL.cOut) - 4;
   const needle = `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${cx + nr*Math.cos(angle0)}" y2="${cy + nr*Math.sin(angle0)}"></line>`;
@@ -1256,10 +1277,12 @@ function drawDial(){
   // cercle intérieur = clé mineure) et une NOTE SEULE de repère se joue.
   svg.querySelectorAll('.dial-note[data-note]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      state.root = parseInt(el.dataset.note, 10);
-      if(state.face === 'chords') state.chordType = el.dataset.min ? 'min' : 'maj';
+      const pc = parseInt(el.dataset.note, 10), min = !!el.dataset.min;
+      state.key = pc; state.keyMinor = min;      // tonalité de référence
+      state.root = pc;                            // on ramène l'exploration sur la tonique
+      if(state.face === 'chords') state.chordType = min ? 'min' : 'maj';
       render();
-      audio.blip(state.root);
+      audio.blip(state.root, 4 * 60 / looper.metro.bpm);
     });
   });
 }
@@ -1297,6 +1320,28 @@ function renderKeyPad(){
       }
     });
   });
+}
+
+/* ---------------- SÉLECTEUR DE NOTE EXPLORÉE (écran Accords) ---------------- */
+// Change state.root (la note qu'on visualise / entraîne) SANS toucher à la
+// tonalité de référence : on peut ainsi voir une gamme sur un autre degré tout
+// en gardant l'accompagnement dans sa tonalité.
+function renderRootSel(){
+  const host = document.getElementById('rootSel');
+  if(!host) return;
+  host.innerHTML = Array.from({length:12}, (_,i)=>
+    `<button class="rs ${i === state.root ? 'on' : ''}" data-pc="${i}">${noteName(i)}</button>`
+  ).join('');
+  host.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      state.root = parseInt(b.dataset.pc, 10);
+      render();
+      audio.blip(state.root, 4 * 60 / looper.metro.bpm);
+    });
+  });
+  const ind = document.getElementById('keyInd');
+  if(ind) ind.textContent = 'Tonalité : ' + noteName(state.key) + (state.keyMinor ? ' min' : ' maj')
+    + (state.root === state.key ? '' : ' — tu explores ' + noteName(state.root));
 }
 
 /* ---------------- QUALITY / MODE CHIPS ---------------- */
@@ -1588,11 +1633,12 @@ const audio = {
     this.timer = setTimeout(()=>{ this.timer = null; setPlayingUI(false); },
       Math.max(200, (end - this.now)*1000));
   },
-  blip(pc){
+  blip(pc, dur){
     if(state.muted) return;
     this.init(); this.resume();
     if(!this.ctx) return;
-    this.voice(this.midiFreq(60 + pc), this.now + 0.01, 0.5, 0.3);
+    this.stop();
+    this.voice(this.midiFreq(60 + pc), this.now + 0.01, dur || 0.5, 0.3);
   }
 };
 function setPlayingUI(on){
@@ -2001,10 +2047,11 @@ const looper = {
     }
   },
   setBpm(v){
+    if(!Number.isFinite(v)) return;
     this.metro.bpm = Math.max(40, Math.min(240, Math.round(v)));
-    document.getElementById('lpBpmVal').textContent = this.metro.bpm;
-    const pv = document.getElementById('progBpmVal');
-    if(pv) pv.textContent = this.metro.bpm;
+    document.querySelectorAll('.js-bpm').forEach(el=>{
+      if(document.activeElement !== el) el.value = this.metro.bpm;
+    });
   },
   setBeats(n){
     this.metro.beats = n;
@@ -2766,14 +2813,21 @@ document.getElementById('progBpmUp').addEventListener('click', ()=> looper.setBp
 document.getElementById('progBeats').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(b) prog.setBeats(parseInt(b.dataset.b, 10));
 });
-document.getElementById('progBpmVal').textContent = looper.metro.bpm;
+// saisie directe du BPM (les deux champs sont synchronisés)
+document.querySelectorAll('.js-bpm').forEach(inp=>{
+  const apply = ()=>{ looper.setBpm(parseInt(inp.value, 10)); };
+  inp.addEventListener('change', apply);
+  inp.addEventListener('blur', ()=>{ inp.value = looper.metro.bpm; });
+});
+document.querySelectorAll('.js-bpm').forEach(el=> el.value = looper.metro.bpm);
 prog._render();
 
-// Clavier d'accords de la tonalité rafraîchi après chaque render.
+// Clavier d'accords + sélecteur de note rafraîchis après chaque render.
 const _renderBase = render;
 render = function(){
   _renderBase();
   renderKeyPad();
+  renderRootSel();
 };
 
 setMutedUI();
