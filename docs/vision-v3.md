@@ -144,6 +144,13 @@ jouable en live ; lancement de clips, scènes, séquenceur MIDI, hôte AUv3.
 - Time-stretch pour caler au tempo = phase-vocoder (plus tard, optionnel).
 - Canevas libre = `div` en position absolue ; la grille d'abord.
 
+> **Constatation (test iPad, v2)** : dans le looper actuel, charger une boucle
+> sauvegardée pendant que le looper en joue déjà une remplace tout net l'ancienne
+> par la nouvelle, sans transition. Ce swap immédiat est exactement le
+> déclenchement one-shot d'un pad de sampler — une piste concrète pour cette
+> phase, à retravailler avec un vrai fondu / calage plutôt que le remplacement
+> brut d'aujourd'hui.
+
 ---
 
 ## 5. Comment tout s'articule
