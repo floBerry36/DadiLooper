@@ -347,6 +347,8 @@
     transition:filter .15s,transform .05s;
   }
   .lp-btn:active{transform:translateY(1px);}
+  .lp-btn:disabled{opacity:0.35;cursor:default;}
+  .lp-btn:disabled:active{transform:none;}
   /* cibles tactiles : gros pouces */
   .looper input[type=range]{
     -webkit-appearance:none;appearance:none;height:30px;background:transparent;cursor:pointer;
@@ -474,12 +476,22 @@
   .lp-beats button.on{background:var(--oxblood);border-color:var(--oxblood);color:#fbeee9;}
 
   .lp-progress{
-    margin-top:12px;height:10px;border-radius:999px;background:rgba(42,35,24,0.14);overflow:hidden;
+    position:relative;margin-top:18px;padding:15px 0;touch-action:none;cursor:pointer;
+  }
+  .lp-progress.empty{opacity:0.45;cursor:default;}
+  .lp-progress-track{
+    height:10px;border-radius:999px;background:rgba(42,35,24,0.14);overflow:hidden;
     transition:box-shadow .15s ease;
   }
-  .lp-progress.arming{box-shadow:0 0 0 2px rgba(200,140,70,0.85), 0 0 12px rgba(200,140,70,0.5);}
+  .lp-progress.arming .lp-progress-track{box-shadow:0 0 0 2px rgba(200,140,70,0.85), 0 0 12px rgba(200,140,70,0.5);}
   .lp-progress.arming .lp-playhead{background:#c8964a;}
   .lp-playhead{height:100%;width:0;background:var(--teal);}
+  .lp-progress-knob{
+    position:absolute;top:50%;left:0%;width:28px;height:28px;border-radius:50%;
+    background:var(--teal);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.45);
+    transform:translate(-50%,-50%);pointer-events:none;
+  }
+  .lp-progress.arming .lp-progress-knob{background:#c8964a;}
   .lp-layers{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
   .lp-layer{position:relative;border-radius:8px;overflow:hidden;}
   .lp-layer-del{
@@ -873,7 +885,7 @@
         Pad rouge : 1ʳᵉ fois → décompte puis enregistrement (fixe la longueur). Ensuite → overdub au tour suivant. Pad vert : lecture / stop.
       </p>
 
-      <div class="row lp-tools" id="lpToolRow" hidden>
+      <div class="row lp-tools" id="lpToolRow">
         <button class="lp-btn lp-ghost" id="lpUndoBtn" type="button" title="Annuler la dernière couche">↶</button>
         <button class="lp-btn lp-ghost" id="lpClearBtn" type="button" title="Tout effacer">✕</button>
         <button class="lp-btn lp-ghost lp-icon" id="lpSaveBtn" type="button" title="Sauvegarder">💾</button>
@@ -881,7 +893,10 @@
         <button class="lp-btn lp-ghost lp-icon" id="lpRenameBtn" type="button" title="Renommer la boucle">✎</button>
       </div>
 
-      <div class="lp-progress" id="lpProgWrap" hidden><div class="lp-playhead" id="lpPlayhead"></div></div>
+      <div class="lp-progress" id="lpProgWrap">
+        <div class="lp-progress-track"><div class="lp-playhead" id="lpPlayhead"></div></div>
+        <div class="lp-progress-knob" id="lpProgKnob"></div>
+      </div>
       <div class="lp-layers" id="lpLayers"></div>
 
       <div class="lp-lib" id="lpLibWrap" hidden>
@@ -1876,7 +1891,7 @@ function fxBuild(ctx, fx){
 const looper = {
   stream:null, src:null, proc:null, sink:null, bus:null,
   fx:null, _fxNodes:null,
-  _stopped:false,
+  _stopped:false, _pausedAt:0, _seekDragging:false,
   layers:[], loopSamples:0, loopLen:0, loop0:0,
   mode:'idle',                 // idle | countin | recFirst | playing | recOver | assembling
   recPhase:0, targetSamples:0,
@@ -2267,7 +2282,6 @@ const looper = {
     this.loop0 = audio.ctx.currentTime;
     this._addLayer(data, this.loop0, 0);
     this.mode = 'playing';
-    document.getElementById('lpProgWrap').hidden = false;
     this._status('Boucle : ' + this.loopLen.toFixed(2) + ' s');
     this._syncBtns();
   },
@@ -2349,10 +2363,8 @@ const looper = {
     if(!this.metro.on){ this._beatDotsOff(); document.getElementById('lpMetro').hidden = true; }
     this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} });
     this.layers = []; this.loopLen = 0; this.loopSamples = 0; this.mode = 'idle';
-    this._stopped = false; this._loopName = null;
-    document.getElementById('lpProgWrap').hidden = true;
-    document.getElementById('lpPlayhead').style.width = '0%';
-    const dp = document.getElementById('dialProg'); if(dp) dp.setAttribute('stroke-dasharray','0 100');
+    this._stopped = false; this._loopName = null; this._pausedAt = 0;
+    this._setProgress(0);
     this._status(''); this._renderLayers(); this._syncBtns();
   },
 
@@ -2361,18 +2373,19 @@ const looper = {
     if(!this.layers.length || this._stopped) return;
     if(this.mode === 'armed'){ if(this._countTimer){ clearTimeout(this._countTimer); this._countTimer = null; } this.mode = 'playing'; }
     this.layers.forEach(L=>{ try{ L.node && L.node.stop(); }catch(e){} L.node = null; });
-    this._stopped = true;
-    document.getElementById('lpPlayhead').style.width = '0%';
+    this._stopped = true; this._pausedAt = 0;
+    this._setProgress(0);
     this._status('Boucle arrêtée');
     this._syncBtns();
   },
-  // Relance toutes les couches en phase, depuis le début de la boucle.
+  // Relance toutes les couches en phase, depuis la position de la tête de lecture.
   playLoop(){
     if(!this.layers.length || !this._stopped) return;
     if(!this._ensureAudioOut()) return;
     const ctx = audio.ctx;
     const when = ctx.currentTime + 0.06;
-    this.loop0 = when;
+    const offset = this._pausedAt || 0;
+    this.loop0 = when - offset;
     this.layers.forEach(L=>{
       const ab = ctx.createBuffer(1, L.data.length, ctx.sampleRate);
       (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
@@ -2380,7 +2393,7 @@ const looper = {
       node.buffer = ab; node.loop = true; node.loopStart = 0; node.loopEnd = this.loopLen;
       L.gain.gain.value = L.muted ? 0 : (L.vol == null ? 1 : L.vol);
       node.connect(L.gain);
-      node.start(when, 0);
+      node.start(when, offset);
       L.node = node;
     });
     this._stopped = false;
@@ -2392,18 +2405,72 @@ const looper = {
     if(!this.layers.length) return;
     if(this._stopped) this.playLoop(); else this.stopLoop();
   },
+  // Saute la lecture à une fraction (0-1) de la boucle : tap/glissé sur la barre de progression.
+  seekTo(fracRaw){
+    if(!this.layers.length || !this.loopLen) return;
+    if(['recFirst','recOver','countin','assembling','armed'].includes(this.mode)) return;
+    const frac = Math.max(0, Math.min(0.999, fracRaw));
+    const offset = frac * this.loopLen;
+    this._setProgress(frac * 100);
+    if(this._stopped){ this._pausedAt = offset; return; }
+    if(!this._ensureAudioOut()) return;
+    const ctx = audio.ctx;
+    const when = ctx.currentTime + 0.05;
+    this.layers.forEach(L=>{
+      try{ L.node && L.node.stop(); }catch(e){}
+      const ab = ctx.createBuffer(1, L.data.length, ctx.sampleRate);
+      (ab.copyToChannel ? ab.copyToChannel(L.data, 0) : ab.getChannelData(0).set(L.data));
+      const node = ctx.createBufferSource();
+      node.buffer = ab; node.loop = true; node.loopStart = 0; node.loopEnd = this.loopLen;
+      node.connect(L.gain);
+      node.start(when, offset);
+      L.node = node;
+    });
+    this.loop0 = when - offset;
+    this._pausedAt = offset;
+  },
+  _setProgress(pct){
+    const ph = document.getElementById('lpPlayhead'); if(ph) ph.style.width = pct.toFixed(1) + '%';
+    const knob = document.getElementById('lpProgKnob'); if(knob) knob.style.left = pct.toFixed(1) + '%';
+    const dp = document.getElementById('dialProg'); if(dp) dp.setAttribute('stroke-dasharray', pct.toFixed(1) + ' 100');
+  },
+  // Tap ou glissé sur la barre : suit le doigt en continu, ne redémarre l'audio qu'au relâché.
+  _wireProgressSeek(){
+    const wrap = document.getElementById('lpProgWrap');
+    let frac = 0;
+    const fracFromEvent = e=>{
+      const r = wrap.getBoundingClientRect();
+      return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    };
+    wrap.addEventListener('pointerdown', e=>{
+      if(!this.layers.length) return;
+      this._seekDragging = true;
+      try{ wrap.setPointerCapture(e.pointerId); }catch(err){}
+      frac = fracFromEvent(e);
+      this._setProgress(frac * 100);
+    });
+    wrap.addEventListener('pointermove', e=>{
+      if(!this._seekDragging) return;
+      frac = fracFromEvent(e);
+      this._setProgress(frac * 100);
+    });
+    const release = ()=>{
+      if(!this._seekDragging) return;
+      this._seekDragging = false;
+      this.seekTo(frac);
+    };
+    wrap.addEventListener('pointerup', release);
+    wrap.addEventListener('pointercancel', release);
+  },
 
   _raf(){
     const step = ()=>{
-      const ph = document.getElementById('lpPlayhead');
-      const prog = document.getElementById('dialProg');
-      if(this.loopLen > 0 && !this._stopped){
+      if(this._seekDragging){ /* le glissé pilote l'affichage */ }
+      else if(this.loopLen > 0 && !this._stopped){
         const p = ((audio.ctx.currentTime - this.loop0) % this.loopLen) / this.loopLen;
-        if(ph) ph.style.width = (p * 100).toFixed(1) + '%';
-        if(prog) prog.setAttribute('stroke-dasharray', (p * 100).toFixed(1) + ' 100');
-      } else if(this._stopped){
-        if(ph) ph.style.width = '0%';
-        if(prog) prog.setAttribute('stroke-dasharray', '0 100');
+        this._setProgress(p * 100);
+      } else if(this._stopped && this.loopLen > 0){
+        this._setProgress(((this._pausedAt || 0) / this.loopLen) * 100);
       }
       requestAnimationFrame(step);
     };
@@ -2411,6 +2478,10 @@ const looper = {
   },
   _renderLayers(){
     const host = document.getElementById('lpLayers');
+    if(!this.layers.length){
+      host.innerHTML = '<div class="lp-layer"><div class="lp-layer-content"><div class="lp-layer-top"><span class="nm">Vide</span></div></div></div>';
+      return;
+    }
     host.innerHTML = this.layers.map((L,i)=>
       `<div class="lp-layer" data-i="${i}">
         <button class="lp-layer-del" data-i="${i}" aria-label="Supprimer la couche ${i+1}">✕</button>
@@ -2492,7 +2563,8 @@ const looper = {
       this.mode === 'armed'    ? 'Annuler l’overdub en attente' :
       this.mode === 'playing'  ? 'Enregistrer une couche' :
                                  'Lancer l’enregistrement');
-    document.getElementById('lpProgWrap').classList.toggle('arming', this.mode === 'armed');
+    const progWrap = document.getElementById('lpProgWrap');
+    progWrap.classList.toggle('arming', this.mode === 'armed');
     const dp = document.getElementById('dialProg');
     if(dp) dp.setAttribute('stroke', this.mode === 'armed' ? '#c8964a'
       : rON ? '#ff3b2f' : '#3d6c5c');
@@ -2500,7 +2572,8 @@ const looper = {
     play.hidden = busy;
     play.classList.toggle('playing', has && !this._stopped);
     document.getElementById('lpPlayIco').textContent = this._stopped ? '▶' : '■';
-    document.getElementById('lpToolRow').hidden = !has || busy;
+    progWrap.classList.toggle('empty', !has);
+    document.querySelectorAll('#lpToolRow .lp-btn').forEach(b=> b.disabled = !has || busy);
     const ln = document.getElementById('loopName');
     if(ln) ln.textContent = has ? (this._loopName || 'Boucle en cours') : 'Aucune boucle';
   },
@@ -2737,10 +2810,9 @@ const looper = {
     this.mode = 'playing';
     if(this.bus) this.bus.gain.setTargetAtTime(1, audio.ctx.currentTime, 0.01);
     this._addLayer(data, this.loop0, 0);
-    this._stopped = false;
+    this._stopped = false; this._pausedAt = 0;
     this._loopName = rec.name;
     document.getElementById('lpMain').hidden = false;
-    document.getElementById('lpProgWrap').hidden = false;
     this._revealFx();
     this._status('Chargé : ' + rec.name + ' (' + this.loopLen.toFixed(2) + ' s)');
     this._syncBtns();
@@ -2940,6 +3012,8 @@ render = function(){
 
 setMutedUI();
 render();
+looper._renderLayers();
+looper._wireProgressSeek();
 looper._syncBtns();
 </script>
 </body>

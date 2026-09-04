@@ -43,6 +43,7 @@ Légende — **Pertinent** : ✅ oui · 🤔 à discuter · ❌ non.
 | Overdub armé → démarre au début du tour suivant | Loopy | ✅ | ✅ | **fait** |
 | Vrai Stop / Lecture (arrêt réel des sources) | Jam / Loopy | ✅ | ✅ | **fait** |
 | Volume + mute par couche, en direct | Jam | ✅ | ✅ | **fait** |
+| Navigation dans la barre de lecture (tap/glissé pour sauter à un point de la boucle) | usage iPad | ✅ | ✅ | **fait** — contrainte apparue en test : sur une boucle longue (ex. 1min10), attendre le bouclage naturel pour enchaîner un overdub ou réécouter un passage est trop long |
 | **Pistes indépendantes** (3–4 boucles séparées, longueurs multiples de la maîtresse) | Jam / Loopy | ✅ | ✅ | **phase 3** |
 | Longueur pré-choisie (2 / 4 / 8 mesures) avant d'enregistrer | Jam | ✅ | ✅ | **phase 3** |
 | Undo / redo par piste | Loopy | ✅ | ✅ | **phase 3** |
