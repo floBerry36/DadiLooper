@@ -141,7 +141,6 @@
   }
   svg.dial{display:block;max-width:100%;height:auto;margin:0 auto;}
   .dial-note.outer,.dial-note.inner{cursor:pointer;}
-  .dial-note.inner:hover .dial-note-bg{fill:var(--brass-light);}
   .dial-note circle.hit{fill:transparent;}
   .dial-note text{
     font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;
@@ -154,7 +153,12 @@
   /* cercle intérieur : relatifs mineurs, fond plus discret par défaut */
   .dial-note.inner .dial-note-bg{fill:rgba(42,35,24,0.05);stroke:rgba(42,35,24,0.16);}
   .dial-note.inner text{font-size:9.5px;font-weight:600;}
-  .dial-note.outer:hover .dial-note-bg{fill:var(--brass-light);}
+  /* survol souris seulement — sur tactile le :hover reste « collé » après un tap
+     et écrasait la couleur de rôle (la pastille restait jaune au lieu de rouge) */
+  @media (hover:hover) and (pointer:fine){
+    .dial-note.outer:hover .dial-note-bg,
+    .dial-note.inner:hover .dial-note-bg{fill:var(--brass-light);}
+  }
 
   /* accords diatoniques mis en avant :
      I = rouge · iii = bleu · V = jaune · IV/ii/vi = vert · hors tonalité = atténué */
