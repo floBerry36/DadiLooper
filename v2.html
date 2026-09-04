@@ -587,8 +587,8 @@
   .dial-prog{transition:stroke .2s ease;}
 
   /* pad d'enregistrement : bien à l'intérieur de l'anneau intérieur */
-  .center-pad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:31%;aspect-ratio:1/1;z-index:2;}
-  .center-pad .lp-pad-rec{
+  .center-pad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:31%;aspect-ratio:1/1;z-index:2;pointer-events:none;}
+  .center-pad .lp-pad-rec{pointer-events:auto;
     width:100%;height:100%;min-height:0 !important;border-radius:50%;
     box-shadow:0 0 0 3px #17171b, inset 0 3px 4px rgba(255,255,255,0.28),
                inset 0 -18px 26px rgba(0,0,0,0.35), 0 3px 10px rgba(0,0,0,0.42) !important;
@@ -1252,14 +1252,14 @@ function drawDial(){
       stroke-dasharray="0 100" transform="rotate(-90 ${cx} ${cy})"></circle>`;
 
   svg.innerHTML = deco + prog + needle + ring + center;
-  // Cliquer un accord de la roue le choisit comme tonique : cercle extérieur = clé
-  // majeure, cercle intérieur = clé mineure (sur la face Accords).
+  // Cliquer une pastille : elle devient la tonique (cercle extérieur = clé majeure,
+  // cercle intérieur = clé mineure) et une NOTE SEULE de repère se joue.
   svg.querySelectorAll('.dial-note[data-note]').forEach(el=>{
     el.addEventListener('click', ()=>{
       state.root = parseInt(el.dataset.note, 10);
       if(state.face === 'chords') state.chordType = el.dataset.min ? 'min' : 'maj';
       render();
-      audio.play(currentVoicing(), state.playMode);
+      audio.blip(state.root);
     });
   });
 }
@@ -1675,13 +1675,11 @@ const prog = {
     const ct = CHORD_TYPES.find(x=> x.id === c.type);
     const midis = ct.intervals.map(iv => 52 + c.root + iv);
     if(state.playMode === 'arp'){
-      const stepT = spb / 2;                                   // croche
-      const pat = midis.concat(midis.slice(0, -1).reverse());  // montée + descente
-      let n = 0;
-      for(let tt = t; tt < t + dur - 0.001; tt += stepT){
-        audio.voice(audio.midiFreq(pat[n % pat.length]), tt, stepT * 1.6, 0.24);
-        n++;
-      }
+      // TOUT l'arpège tient dans la durée de l'accord : « 1 temps » = rapide,
+      // « 8 temps » = étalé. La durée règle la vitesse, pas le nombre de notes.
+      const pat = midis.concat([midis[0] + 12], midis.slice(1).reverse());
+      const stepT = dur / pat.length;
+      pat.forEach((m, i) => audio.voice(audio.midiFreq(m), t + i * stepT, stepT * 1.4, 0.24));
     } else {
       midis.forEach((m, i) => audio.voice(audio.midiFreq(m), t + i * 0.014, dur * 0.95, 0.16));
     }
