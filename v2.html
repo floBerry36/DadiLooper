@@ -1949,6 +1949,11 @@ const looper = {
   },
 
   async tapRec(){
+    // Relance systématiquement le contexte audio : sur iOS Safari, un window.prompt()
+    // (renommer/sauvegarder) peut le laisser suspendu, et sans ça l'enregistrement
+    // suivant tournait « dans le vide » (UI en enregistrement, mais rien capté ni
+    // entendu tant que le contexte restait suspendu).
+    this._ensureAudioOut();
     // 1er appui : on demande le micro (Safari affiche sa boîte une fois), puis on enchaîne.
     if((this.mode === 'idle' || this.mode === 'playing') && !this.proc){
       await this.enableMic();
@@ -2578,6 +2583,7 @@ const looper = {
     const rec = (await this._libAll()).find(x=> x.id === id);
     if(!rec) return;
     const name = (window.prompt('Nouveau nom :', rec.name) || '').trim();
+    this._ensureAudioOut();   // le prompt() peut avoir suspendu le contexte audio (iOS)
     if(!name || name === rec.name) return;
     rec.name = name;
     await this._libPut(rec);
@@ -2595,6 +2601,7 @@ const looper = {
     if(!this.layers.length) return;
     const def = 'Boucle ' + new Date().toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
     const name = (window.prompt('Nom de la boucle :', def) || '').trim();
+    this._ensureAudioOut();   // le prompt() peut avoir suspendu le contexte audio (iOS)
     if(!name) return;
     this._status('Sauvegarde…');
     const mix = await this._bounce();
@@ -2619,6 +2626,7 @@ const looper = {
   renameCurrent(){
     if(!this.layers.length) return;
     const name = (window.prompt('Nom de la boucle :', this._loopName || 'Boucle en cours') || '').trim();
+    this._ensureAudioOut();   // le prompt() peut avoir suspendu le contexte audio (iOS)
     if(!name) return;
     this._loopName = name;
     this._syncBtns();
@@ -2697,7 +2705,9 @@ const looper = {
     bind('button.ren', id=> this._libRename(id));
     bind('button.exp', id=> this._libExport(id));
     bind('button.del', async id=>{
-      if(!window.confirm('Supprimer cette boucle ?')) return;
+      const ok = window.confirm('Supprimer cette boucle ?');
+      looper._ensureAudioOut();   // le confirm() peut avoir suspendu le contexte audio (iOS)
+      if(!ok) return;
       await this._libDel(id);
       this._renderLib();
     });
@@ -2794,6 +2804,15 @@ document.getElementById('lpBeatsSel').addEventListener('click', e=>{
   lpFx.addEventListener('change', e=> onParam(e.target));
 })();
 looper._renderLib();
+
+// Filet de sécurité : iOS Safari suspend parfois le contexte audio (dialogue
+// natif, changement d'onglet furtif…) sans que rien ne le relance. On tente un
+// resume() à chaque retour au premier plan.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && audio.ctx && audio.ctx.state !== 'running'){
+    audio.ctx.resume().catch(()=>{});
+  }
+});
 
 /* ============ V2 : navigation, tiroir ============ */
 const app = document.getElementById('app');
