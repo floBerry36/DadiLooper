@@ -399,6 +399,7 @@
     background:linear-gradient(180deg,#6ee7a1,#33bd75 45%,#1c8551);
     box-shadow:0 0 0 3px #17171b, inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -15px 22px rgba(0,0,0,0.2),
                0 0 26px 5px rgba(70,240,150,0.55), 0 3px 8px rgba(0,0,0,0.42);
+    animation:lppulse 1s ease-in-out infinite;
   }
 
   /* Enregistrement — rouge, 2/3 de la largeur */
@@ -621,6 +622,7 @@
   .scr-wheel > .lp-pad-play.playing{
     background:linear-gradient(150deg,#8bf3b8 0%,#3ecf83 48%,#22995e 100%);
     filter:drop-shadow(0 0 16px rgba(70,240,150,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+    animation:lppulse 1s ease-in-out infinite;
   }
   .scr-wheel > .lp-pad-play::before,.scr-wheel > .lp-pad-play::after{display:none;}
   .scr-wheel > .lp-pad-play .lp-pad-ico{
@@ -828,7 +830,7 @@
           </button>
         </div>
       </div>
-      <button class="lp-pad lp-pad-play" id="lpPlayBtn" type="button" aria-label="Lecture / Stop de la boucle" hidden>
+      <button class="lp-pad lp-pad-play" id="lpPlayBtn" type="button" aria-label="Lecture / Stop de la boucle">
         <span class="lp-pad-ico" id="lpPlayIco" aria-hidden="true">▶</span>
       </button>
 
@@ -1875,7 +1877,7 @@ const looper = {
   mode:'idle',                 // idle | countin | recFirst | playing | recOver | assembling
   recPhase:0, targetSamples:0,
   latencyComp:0.15,
-  _countTimer:null, _countKind:'first',
+  _countTimer:null, _countKind:'first', _pendingFinish:null,
   _workletReady:false, _calResolve:null, _loopName:null,
   metro:{ on:false, bpm:100, beats:4, vol:0.4 },
   _metroTimer:null, _metroNextT:0, _metroBeat:0, _metroAnchor:0,
@@ -1939,11 +1941,19 @@ const looper = {
   },
 
   // Messages en provenance du worklet de capture (looper-worklet.js).
+  // Note : recordBtn() bascule mode sur 'assembling' *avant* d'envoyer le stop,
+  // donc au moment où ce message arrive this.mode vaut déjà 'assembling' pour
+  // les deux cas (1re prise et overdub arrêtés à la main) — on ne peut plus s'y
+  // fier pour savoir laquelle des deux finitions appeler, d'où _pendingFinish,
+  // posé par recordBtn() juste avant le postMessage. Le cas overdub qui s'arrête
+  // tout seul (target atteint côté worklet) ne passe pas par recordBtn() : mode
+  // reste 'recOver' et _pendingFinish reste vide, d'où le repli sur this.mode.
   _onWorkletMessage(msg){
     if(msg.type === 'done'){
-      if(this.mode === 'recFirst'){
+      const kind = this._pendingFinish; this._pendingFinish = null;
+      if(kind === 'first'){
         this._finishFirst(msg.data);
-      } else if(this.mode === 'recOver' || this.mode === 'assembling'){
+      } else if(kind === 'over' || this.mode === 'recOver' || this.mode === 'assembling'){
         this.mode = 'assembling';
         this._finishOver(msg.data);
       }
@@ -1979,9 +1989,11 @@ const looper = {
       this._cancelArm();
     } else if(this.mode === 'recFirst'){
       this.mode = 'assembling';
+      this._pendingFinish = 'first';
       this.proc.port.postMessage({ cmd:'stop' });   // -> message 'done' -> _finishFirst()
     } else if(this.mode === 'recOver'){
       this.mode = 'assembling';                     // arrêt anticipé → complété par du silence
+      this._pendingFinish = 'over';
       this.proc.port.postMessage({ cmd:'stop' });   // -> message 'done' -> _finishOver()
     }
   },
@@ -2426,7 +2438,7 @@ const looper = {
     if(dp) dp.setAttribute('stroke', this.mode === 'armed' ? '#c8964a'
       : rON ? '#ff3b2f' : '#3d6c5c');
     const has = this.layers.length > 0;
-    play.hidden = !has || busy;
+    play.hidden = busy;
     play.classList.toggle('playing', has && !this._stopped);
     document.getElementById('lpPlayIco').textContent = this._stopped ? '▶' : '■';
     document.getElementById('lpToolRow').hidden = !has || busy;
