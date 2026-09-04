@@ -1,3 +1,5 @@
-# ancienne version, non publiée
+# archives locales (git fait déjà l'historique — voir les tags et git log)
+*.old
+*.bak
+*.orig
 regle-a-dadi.html
-regle-a-dadi.html.old
