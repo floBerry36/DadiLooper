@@ -21,7 +21,8 @@ l'**apprentissage**, utilisable comme une app sur iPad.
 |---|---|
 | `index.html` | version **1**, en production, ~2500 lignes, tout-en-un (HTML + CSS + JS inline) |
 | `v2.html` | **refonte** paysage en cours (deux écrans : Harmonie / Looper), c'est ici qu'on travaille |
-| `docs/vision-v3.md` | **cap** : état des lieux audio, revue looper, concept sampler, feuille de route. À relire avant tout gros chantier. |
+| `docs/cahier-des-charges.md` | **la référence** : toutes les fonctions, tranchées pertinent/faisable, en phases. On ne code une fonction que si elle y figure. |
+| `docs/vision-v3.md` | le récit : état des lieux audio, inspirations, moteur audio en détail. Complète le cahier des charges. |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png` | installation PWA (v1 uniquement ; v2 sans manifest pendant l'itération) |
 | `regle-a-dadi.html.old` | ancienne version, ignorée par git |
 
