@@ -1771,21 +1771,21 @@ const prog = {
 // Boucle libre à couches multiples, capture micro seule.
 // - 1re prise : durée libre → fixe la longueur de boucle (loopLen).
 // - prises suivantes : durée = 1 boucle, calées en phase sur la boucle en cours.
-// Capture par ScriptProcessorNode (déprécié mais fiable sur iOS Safari) : on
-// accumule les échantillons bruts, ce qui donne une longueur exacte et un
-// calage à l'échantillon près. getUserMedia impose un contexte sécurisé (HTTPS).
-function mergeChunks(chunks, maxSamples){
-  let total = chunks.reduce((s,c)=>s+c.length, 0);
-  if(maxSamples) total = Math.min(total, maxSamples);
-  const out = new Float32Array(total);
-  let off = 0;
-  for(const c of chunks){
-    if(off >= total) break;
-    const n = Math.min(c.length, total - off);
-    out.set(c.subarray(0, n), off);
-    off += n;
+// Capture par AudioWorklet (looper-worklet.js) : le traitement tourne sur le
+// thread audio temps réel, insensible aux ralentissements de l'affichage.
+// getUserMedia impose un contexte sécurisé (HTTPS).
+
+// Micro-fondu (quelques ms) aux deux bouts d'une couche, en place dans le
+// tableau : élimine le clic au point de bouclage sans dépendre du contenu
+// audio (la boucle ne « repart » jamais sur une discontinuité brute).
+function applyLoopFade(buf, sr, ms){
+  const n = Math.min(buf.length >> 1, Math.round(sr * (ms || 4) / 1000));
+  for(let i=0;i<n;i++){
+    const g = i / n;
+    buf[i] *= g;
+    buf[buf.length - 1 - i] *= g;
   }
-  return out;
+  return buf;
 }
 
 /* ---------------- LOOPER FX ---------------- */
@@ -1873,10 +1873,10 @@ const looper = {
   _stopped:false,
   layers:[], loopSamples:0, loopLen:0, loop0:0,
   mode:'idle',                 // idle | countin | recFirst | playing | recOver | assembling
-  chunks:[], recCount:0, recPhase:0, targetSamples:0,
+  recPhase:0, targetSamples:0,
   latencyComp:0.15,
   _countTimer:null, _countKind:'first',
-  _calibrating:false, _calBlocks:null, _loopName:null,
+  _workletReady:false, _calResolve:null, _loopName:null,
   metro:{ on:false, bpm:100, beats:4, vol:0.4 },
   _metroTimer:null, _metroNextT:0, _metroBeat:0, _metroAnchor:0,
 
@@ -1912,9 +1912,21 @@ const looper = {
       return;
     }
     const ctx = audio.ctx;
+    try{
+      if(!this._workletReady){
+        await ctx.audioWorklet.addModule('looper-worklet.js');
+        this._workletReady = true;
+      }
+    }catch(err){
+      this._hint('Moteur d’enregistrement indisponible sur ce navigateur (' + (err && err.message ? err.message : err) + ').');
+      this._hintShow();
+      return;
+    }
     this.src  = ctx.createMediaStreamSource(this.stream);
-    this.proc = ctx.createScriptProcessor(4096, 1, 1);
-    this.proc.onaudioprocess = e => this._capture(e);
+    this.proc = new AudioWorkletNode(ctx, 'dadi-recorder', {
+      numberOfInputs:1, numberOfOutputs:1, channelCount:1, channelCountMode:'explicit', outputChannelCount:[1]
+    });
+    this.proc.port.onmessage = e => this._onWorkletMessage(e.data);
     this.sink = ctx.createGain(); this.sink.gain.value = 0;   // aucun retour casque
     this.src.connect(this.proc);
     this.proc.connect(this.sink); this.sink.connect(ctx.destination);
@@ -1926,25 +1938,17 @@ const looper = {
     this._syncBtns();
   },
 
-  _capture(e){
-    if(this._calibrating){
-      this._calBlocks.push({ t: audio.ctx.currentTime, data: new Float32Array(e.inputBuffer.getChannelData(0)) });
-      return;
-    }
-    if(this.mode !== 'recFirst' && this.mode !== 'recOver') return;
-    const inp = e.inputBuffer.getChannelData(0);
-    if(this.mode === 'recFirst'){
-      this.chunks.push(new Float32Array(inp));
-      this.recCount += inp.length;
-    } else {
-      const remain = this.targetSamples - this.recCount;
-      const n = Math.min(remain, inp.length);
-      this.chunks.push(inp.slice(0, n));
-      this.recCount += n;
-      if(this.recCount >= this.targetSamples){
+  // Messages en provenance du worklet de capture (looper-worklet.js).
+  _onWorkletMessage(msg){
+    if(msg.type === 'done'){
+      if(this.mode === 'recFirst'){
+        this._finishFirst(msg.data);
+      } else if(this.mode === 'recOver' || this.mode === 'assembling'){
         this.mode = 'assembling';
-        setTimeout(()=>this._finishOver(), 0);
+        this._finishOver(msg.data);
       }
+    } else if(msg.type === 'calDone'){
+      if(this._calResolve){ const r = this._calResolve; this._calResolve = null; r(msg.blocks); }
     }
   },
 
@@ -1974,11 +1978,11 @@ const looper = {
     } else if(this.mode === 'armed'){
       this._cancelArm();
     } else if(this.mode === 'recFirst'){
-      this._finishFirst();
-    } else if(this.mode === 'recOver'){
-      this.targetSamples = this.recCount;    // arrêt anticipé → complété par du silence
       this.mode = 'assembling';
-      this._finishOver();
+      this.proc.port.postMessage({ cmd:'stop' });   // -> message 'done' -> _finishFirst()
+    } else if(this.mode === 'recOver'){
+      this.mode = 'assembling';                     // arrêt anticipé → complété par du silence
+      this.proc.port.postMessage({ cmd:'stop' });   // -> message 'done' -> _finishOver()
     }
   },
 
@@ -2087,10 +2091,9 @@ const looper = {
     btn.disabled = true;
     this._status('Calibration… laisse le micro capter le son du haut-parleur.');
 
-    this._calBlocks = [];
-    this._calibrating = true;
     const busGain = this.bus ? this.bus.gain.value : 1;
     if(this.bus) this.bus.gain.value = 0;   // couper les boucles pendant la mesure
+    this.proc.port.postMessage({ cmd:'calStart' });
 
     const N = 5, gap = 0.42, t0 = ctx.currentTime + 0.3;
     const clicks = [];
@@ -2106,11 +2109,14 @@ const looper = {
     }
     const endT = t0 + N*gap + 0.35;
     await new Promise(r=> setTimeout(r, (endT - ctx.currentTime)*1000 + 80));
-    this._calibrating = false;
+
+    const blocks = await new Promise(resolve=>{
+      this._calResolve = resolve;
+      this.proc.port.postMessage({ cmd:'calStop' });
+    });
     btn.disabled = false;
     if(this.bus) this.bus.gain.value = busGain;
 
-    const blocks = this._calBlocks; this._calBlocks = null;
     if(!blocks || blocks.length < 3){ this._status('Calibration impossible (pas de signal micro).'); return; }
     const bl = blocks[0].data.length;
     const buf = new Float32Array(blocks.length * bl);
@@ -2218,23 +2224,28 @@ const looper = {
     if(this._countKind === 'over'){
       const now = audio.ctx.currentTime;
       this.recPhase = ((now - this.loop0) % this.loopLen + this.loopLen) % this.loopLen;
-      this.chunks = []; this.recCount = 0;
       this.targetSamples = this.loopSamples;
       this.mode = 'recOver';
+      this.proc.port.postMessage({ cmd:'start', target: this.targetSamples });
       this._status('Overdub en cours…');
     } else {
-      this.chunks = []; this.recCount = 0;
       this.mode = 'recFirst';
+      this.proc.port.postMessage({ cmd:'start', target: 0 });
       this._status('Enregistrement… (ré-appuie pour fixer la longueur)');
     }
     this._syncBtns();
   },
 
-  _finishFirst(){
-    const data = mergeChunks(this.chunks);
+  // Note : on planifie toujours à partir de audio.ctx.currentTime lu *ici*, pas
+  // du endTime renvoyé par le worklet — ce dernier est déjà dans le passé le
+  // temps que le message arrive, et AudioBufferSourceNode.start() veut un
+  // instant présent ou futur. Le décalage (quelques ms de latence de message)
+  // est inaudible et déjà couvert par le calage overdub.
+  _finishFirst(data){
     if(data.length < audio.ctx.sampleRate * 0.15){
       this.mode = 'idle'; this._status('Trop court — réessaie.'); this._syncBtns(); return;
     }
+    applyLoopFade(data, audio.ctx.sampleRate, 4);
     this.loopSamples = data.length;
     this.loopLen = data.length / audio.ctx.sampleRate;
     this.loop0 = audio.ctx.currentTime;
@@ -2245,13 +2256,15 @@ const looper = {
     this._syncBtns();
   },
 
-  _finishOver(){
+  _finishOver(data){
     if(this.mode !== 'assembling') return;
-    let data = mergeChunks(this.chunks, this.loopSamples);
-    if(data.length < this.loopSamples){
+    let d = data;
+    if(d.length < this.loopSamples){
       const padded = new Float32Array(this.loopSamples);
-      padded.set(data, 0);
-      data = padded;
+      padded.set(d, 0);
+      d = padded;
+    } else if(d.length > this.loopSamples){
+      d = d.subarray(0, this.loopSamples);   // sécurité ; le worklet tronque déjà à la cible
     }
     const now = audio.ctx.currentTime;
     const phase = ((now - this.loop0) % this.loopLen + this.loopLen) % this.loopLen;
@@ -2262,8 +2275,9 @@ const looper = {
     const S = ((Math.round(startPhase * audio.ctx.sampleRate)) % this.loopSamples + this.loopSamples) % this.loopSamples;
     const aligned = new Float32Array(this.loopSamples);
     for(let k=0;k<this.loopSamples;k++){
-      aligned[k] = data[((k - S) % this.loopSamples + this.loopSamples) % this.loopSamples];
+      aligned[k] = d[((k - S) % this.loopSamples + this.loopSamples) % this.loopSamples];
     }
+    applyLoopFade(aligned, audio.ctx.sampleRate, 4);
     this._addLayer(aligned, now, phase);
     this.mode = 'playing';
     this._status('Couche ' + this.layers.length + ' ajoutée');
