@@ -94,7 +94,24 @@ par piste, export.
 
 ---
 
-## 4. Concept : un sampler dans le même esprit (*Loopy Pro*)
+## 4. Concept : un sampler dans le même esprit (*Loopy Pro*) — **phase ultérieure, sous condition**
+
+> Décision (sept. 2026) : **un seul projet**, mais le sampler n'est pas construit
+> tant que Harmonie + Looper ne sont pas solides. Les modes ne tournant jamais en
+> même temps, la charge processeur n'est pas le vrai risque ; l'archi partage un
+> seul `AudioContext` / transport / bus master, et seul le mode actif est branché.
+> La lecture de samples (`AudioBufferSourceNode`) est le point le **moins** risqué
+> côté qualité. Le vrai enjeu est ergonomique : garder chaque mode focalisé.
+>
+> **Enregistrer en jouant les samples en même temps** : oui, c'est le flux
+> standard. Avec un **casque**, le fond (samples / accompagnement) part dans le
+> casque et **pas dans l'air** → le micro ne capte que l'instrument acoustique, la
+> piste enregistrée est propre, et elle est déjà calée puisque tout partage le même
+> transport. Côté web, la capture micro (`AudioWorklet`) et la sortie de l'app sont
+> deux chemins séparés : le numérique enregistré ne contient jamais la sortie de
+> l'app — seule une fuite acoustique par le haut-parleur pourrait polluer, que le
+> casque supprime.
+
 
 *Loopy Pro* : un **canevas** de widgets déclenchables (boucles, one-shots,
 boutons, curseurs, XY, découpe de clips, grilles), tout calé au tempo,
