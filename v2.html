@@ -643,40 +643,21 @@
   }
   .lp-pad-rec.recording .rec-label,.lp-pad-rec.armed .rec-label{color:rgba(255,255,255,0.92);}
 
-  /* pad vert : grand triangle rectangle, hypoténuse côté roue, angle droit côté panneau */
+  /* pad vert : rond, même traitement que le pad rouge (anneau + bombé), aux 2/3 de sa taille */
   .scr-wheel > .lp-pad-play{
-    position:absolute;top:6px;right:-10px;z-index:5;
-    width:172px;height:150px;min-height:0 !important;padding:0;border:none;border-radius:0;
-    background:linear-gradient(150deg,#6ee7a1 0%,#33bd75 48%,#1c8551 100%);
-    clip-path:polygon(100% 0, 100% 100%, 0 0);
-    /* le clip-path triangulaire coupe tout box-shadow qui déborderait de la forme :
-       le contour sombre passe donc par une pile de drop-shadow (filtre, appliqué
-       après découpe) qui simule un liseré de ~3px autour du triangle */
-    box-shadow:inset 0 3px 4px rgba(255,255,255,0.28), inset 0 -18px 26px rgba(0,0,0,0.35) !important;
-    filter:
-      drop-shadow(3px 0 0 #17171b) drop-shadow(-3px 0 0 #17171b)
-      drop-shadow(0 3px 0 #17171b) drop-shadow(0 -3px 0 #17171b)
-      drop-shadow(2.1px 2.1px 0 #17171b) drop-shadow(-2.1px 2.1px 0 #17171b)
-      drop-shadow(2.1px -2.1px 0 #17171b) drop-shadow(-2.1px -2.1px 0 #17171b)
-      drop-shadow(0 3px 8px rgba(0,0,0,0.42));
+    position:absolute;top:10px;right:10px;z-index:5;
+    width:108px;height:108px;min-height:0 !important;padding:0;border-radius:50%;
+    background:linear-gradient(180deg,#3f7d58,#276b43 46%,#123320);
+    box-shadow:0 0 0 3px #17171b, inset 0 3px 4px rgba(255,255,255,0.28),
+               inset 0 -18px 26px rgba(0,0,0,0.35), 0 3px 10px rgba(0,0,0,0.42);
   }
   .scr-wheel > .lp-pad-play.playing{
-    background:linear-gradient(150deg,#8bf3b8 0%,#3ecf83 48%,#22995e 100%);
-    box-shadow:inset 0 2px 4px rgba(255,255,255,0.5), inset 0 0 26px rgba(70,240,150,0.45) !important;
-    filter:
-      drop-shadow(3px 0 0 #17171b) drop-shadow(-3px 0 0 #17171b)
-      drop-shadow(0 3px 0 #17171b) drop-shadow(0 -3px 0 #17171b)
-      drop-shadow(2.1px 2.1px 0 #17171b) drop-shadow(-2.1px 2.1px 0 #17171b)
-      drop-shadow(2.1px -2.1px 0 #17171b) drop-shadow(-2.1px -2.1px 0 #17171b)
-      drop-shadow(0 0 16px rgba(70,240,150,0.6)) drop-shadow(0 3px 8px rgba(0,0,0,0.4));
+    background:linear-gradient(180deg,#6ee7a1,#33bd75 45%,#1c8551);
+    box-shadow:0 0 0 3px #17171b, inset 0 2px 4px rgba(255,255,255,0.5),
+               inset 0 0 26px rgba(70,240,150,0.45), 0 3px 10px rgba(0,0,0,0.42);
   }
-  .scr-wheel > .lp-pad-play::before,.scr-wheel > .lp-pad-play::after{
-    border-radius:0;clip-path:polygon(100% 0, 100% 100%, 0 0);
-  }
-  .scr-wheel > .lp-pad-play .lp-pad-ico{
-    align-items:flex-start;justify-content:flex-end;padding:16px 18px 0 0;font-size:46px;color:#fff;
-    text-shadow:0 1px 4px rgba(0,0,0,0.5);
-  }
+  .scr-wheel > .lp-pad-play::before,.scr-wheel > .lp-pad-play::after{border-radius:50%;}
+  .scr-wheel > .lp-pad-play .lp-pad-ico{font-size:34px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);}
   .dial-stage .lp-metro{
     position:absolute;left:50%;top:2%;transform:translateX(-50%);margin:0;z-index:4;
     background:rgba(233,224,198,0.92);border-radius:999px;padding:6px 12px;gap:10px;
@@ -1306,7 +1287,6 @@ function keyDiatonic(){
   const roleByDeg = { 0:'role-root', 2:'role-third', 4:'role-fifth' };
   const chords = [];
   for(let i=0;i<7;i++){
-    if(i === 6) continue;                                   // vii° laissé de côté
     const r  = ((state.key + degs[i]) % 12 + 12) % 12;
     const iv3 = ((degs[(i+2)%7] - degs[i]) % 12 + 12) % 12;
     const iv5 = ((degs[(i+4)%7] - degs[i]) % 12 + 12) % 12;
