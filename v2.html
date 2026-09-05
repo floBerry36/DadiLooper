@@ -649,12 +649,26 @@
     width:172px;height:150px;min-height:0 !important;padding:0;border:none;border-radius:0;
     background:linear-gradient(150deg,#6ee7a1 0%,#33bd75 48%,#1c8551 100%);
     clip-path:polygon(100% 0, 100% 100%, 0 0);
-    box-shadow:none !important;
-    filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+    /* le clip-path triangulaire coupe tout box-shadow qui déborderait de la forme :
+       le contour sombre passe donc par une pile de drop-shadow (filtre, appliqué
+       après découpe) qui simule un liseré de ~3px autour du triangle */
+    box-shadow:inset 0 3px 4px rgba(255,255,255,0.28), inset 0 -18px 26px rgba(0,0,0,0.35) !important;
+    filter:
+      drop-shadow(3px 0 0 #17171b) drop-shadow(-3px 0 0 #17171b)
+      drop-shadow(0 3px 0 #17171b) drop-shadow(0 -3px 0 #17171b)
+      drop-shadow(2.1px 2.1px 0 #17171b) drop-shadow(-2.1px 2.1px 0 #17171b)
+      drop-shadow(2.1px -2.1px 0 #17171b) drop-shadow(-2.1px -2.1px 0 #17171b)
+      drop-shadow(0 3px 8px rgba(0,0,0,0.42));
   }
   .scr-wheel > .lp-pad-play.playing{
     background:linear-gradient(150deg,#8bf3b8 0%,#3ecf83 48%,#22995e 100%);
-    filter:drop-shadow(0 0 16px rgba(70,240,150,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+    box-shadow:inset 0 2px 4px rgba(255,255,255,0.5), inset 0 0 26px rgba(70,240,150,0.45) !important;
+    filter:
+      drop-shadow(3px 0 0 #17171b) drop-shadow(-3px 0 0 #17171b)
+      drop-shadow(0 3px 0 #17171b) drop-shadow(0 -3px 0 #17171b)
+      drop-shadow(2.1px 2.1px 0 #17171b) drop-shadow(-2.1px 2.1px 0 #17171b)
+      drop-shadow(2.1px -2.1px 0 #17171b) drop-shadow(-2.1px -2.1px 0 #17171b)
+      drop-shadow(0 0 16px rgba(70,240,150,0.6)) drop-shadow(0 3px 8px rgba(0,0,0,0.4));
   }
   .scr-wheel > .lp-pad-play::before,.scr-wheel > .lp-pad-play::after{
     border-radius:0;clip-path:polygon(100% 0, 100% 100%, 0 0);
